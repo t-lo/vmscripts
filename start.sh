@@ -20,6 +20,8 @@
 #    update-grub
 #
 # - SSH id:
+#    mkdir -p .ssh
+#    ssh-keygen -f .ssh/id_rsa.test_vm
 #    ssh-copy-id -i .ssh/id_rsa.test_vm.pub root@<ip address>
 #    ssh-copy-id -i .ssh/id_rsa.test_vm.pub user@<ip address>
 #
