@@ -175,7 +175,7 @@ start_vm() {
                 $cdrom                                                              \
                 $immutable ;
             $ipt_script false ;
-            rm -f \"$pidfile\"" 
+            rm -f \"$pidfile\" ; "
 }
 # ----
 
