@@ -1,0 +1,4 @@
+*.iso
+*.raw
+*.pid
+.ssh/*
