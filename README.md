@@ -1,2 +1,3 @@
 # qemu-scripts
-QEmu helper scripts
+
+A few scripts to help with controlling QEmu.
