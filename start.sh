@@ -2,7 +2,8 @@
 
 # Settings
 
-       net="172.16.10.4/30" # host is first, VM is second IP in transfer net
+# TODO: auto-generate IP and pass to VM
+       net="172.16.10.1/30" # host is first, VM is second IP in transfer net
        cpu="1"
   hmp_port="12345"
        mem="512M"
@@ -118,18 +119,29 @@ ip_forward_and_nat() {
 
 start_vm() {
 
+    # command line options
     local immutable="-snapshot"
     local nogfx="-nographic"
+    local detach="false"
 
     echo "$@" | grep -q "rw" && immutable=""
     echo "$@" | grep -q "gfx" && nogfx=""
+    echo "$@" | grep -q "detach" && detach="true"
 
-    kill -s 0 $(cat "$pidfile" 2>/dev/null) 2>/dev/null && {
-        echo ""
-        echo "VM $name already running"
-        echo ""
-        return 1; }
-    rm -f "$pidfile"
+    # check if we are root (we need to be, so use sudo if we aren't).
+    local sudo=""
+    local user="$(id -un)"
+    local sudo_user=""
+    [ "$user" != "root" ] && { sudo=sudo ; sudo_user="sudo -u $user" ; }
+
+    [ -f "$pidfile" ] && {
+        $sudo kill -s 0 $(cat "$pidfile" 2>/dev/null) 2>/dev/null && {
+            echo ""
+            echo "VM $name already running"
+            echo ""
+            return 1; }
+        $sudo rm -f "$pidfile"
+    }
 
     local qemu="`grok_qemu`"
     [ -z "$qemu" ] && {
@@ -146,7 +158,6 @@ start_vm() {
 
     # prepare forwarding script to be executed in the screen session
     local ipt_script=`mktemp`
-    trap "rm -f '$ipt_script'" EXTI
     declare -f ip_forward_and_nat > "$ipt_script"
     declare -f tune_kvm_module >> "$ipt_script"
     echo "name=\"$name\"" >> "$ipt_script"
@@ -154,10 +165,9 @@ start_vm() {
     echo 'ip_forward_and_nat $1' >> "$ipt_script"
     chmod 755 "$ipt_script"
 
-    local sudo=""
-    [ "$(id -un)" != "root" ] && sudo=sudo
-    screen -S "$name"       \
+    screen -A -S "$name" \
         $sudo bash -c "
+            $detach && $sudo_user screen -d $name ;
             $ipt_script true ;
             $qemu                                                                   \
                 -monitor telnet:127.0.0.1:$hmp_port,server,nowait,nodelay           \
@@ -177,7 +187,15 @@ start_vm() {
                 $cdrom                                                              \
                 $immutable ;
             $ipt_script false ;
-            rm -f \"$pidfile\"" 
+            rm -f \"$pidfile\" \"$ipt_script\" ; " 
+
+    $detach && {
+        echo "-------------------------------------------"
+        echo " The VM $name has been started and"
+        echo " detached from this terminal. Run"
+        echo "   screen -rd $name"
+        echo " to attach to the VM."
+        echo ; }
 }
 # ----
 
