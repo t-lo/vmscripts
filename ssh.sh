@@ -10,4 +10,4 @@ ssh     -i .ssh/id_rsa.test_vm          \
         -o TCPKeepAlive=yes             \
         -o LogLevel=quiet               \
         -q                              \
-        root@172.16.10.2 "$@"
+        -p $ssh_port root@localhost "$@"

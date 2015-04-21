@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Settings
-
-# TODO: auto-generate IP and pass to VM
-       net="172.16.10.1/30" # host is first, VM is second IP in transfer net
+       net="172.16.10.0/24"
        cpu="1"
-  hmp_port="12345"
+ port_base="10000"           # TODO: auto-generate
+  hmp_port="$((port_base + 1))"
+  ssh_port="$((port_base + 2))"
        mem="512M"
 # ----
 #
@@ -19,6 +19,8 @@
 #
 #   then:
 #    update-grub
+#
+# - Configure static networking according to the 'net' setting above
 #
 # - SSH id:
 #    mkdir -p .ssh
@@ -49,32 +51,12 @@ export_dir="$(cd "$script_dir/../"; pwd)"
     net_dn="$script_dir/down.sh"
 # ----
 
-vm_ssh() {
-    ssh -i "$script_dir/.ssh/id_rsa"           \
-               -o UserKnownHostsFile=/dev/null \
-               -o StrictHostKeyChecking=no     \
-               -o ConnectTimeout=5             \
-               -o TCPKeepAlive=yes             \
-               -o LogLevel=quiet               \
-               -q                              \
-                "$@"
-}
-# ----
-
-vm_scp() {
-    scp -i "$script_dir/.ssh/id_rsa"           \
-               -o UserKnownHostsFile=/dev/null \
-               -o StrictHostKeyChecking=no     \
-               -o ConnectTimeout=5             \
-               -o TCPKeepAlive=yes             \
-               -o LogLevel=quiet               \
-               -q                              \
-                "$@"
-}
-# ----
-
 tune_kvm_module() {
     local modname=""
+
+    local sudo=""
+    local user="$(id -un)"
+    [ "$user" != "root" ] && sudo=sudo
 
     grep -q 'vmx' /proc/cpuinfo && modname="kvm-intel"
     grep -q 'svm' /proc/cpuinfo && modname="kvm-amd"
@@ -85,8 +67,10 @@ tune_kvm_module() {
         return
     }
 
-    # will only work while kvm is not in use; needs to be done only once
-    rmmod $modname >/dev/null 2>&1 && modprobe $modname nested=1
+    local sysfs="/sys/module/${modname/-/_}/parameters/nested"
+    [ "$(cat $sysfs)" != "Y" ] && {
+        $sudo rmmod $modname >/dev/null 2>&1 \
+            && $sudo modprobe $modname nested=1 ; }
 }
 # ----
 
@@ -98,41 +82,16 @@ grok_qemu() {
 }
 # ----
 
-ip_forward_and_nat() {
-    local onoff="$1"
-    local gw_if=`route -n | awk '/^0.0.0.0/ { print $8; }'`
-
-    if $onoff; then
-        [ -n "$gw_if" ] &&                                      \
-            {   echo " NOTE: will NAT all connections going through $gw_if"
-                iptables --table nat --append POSTROUTING       \
-                                    --out-interface $gw_if -j MASQUERADE; }
-        iptables  --insert FORWARD --in-interface ${name}  -j ACCEPT
-        sysctl -q -w net.ipv4.ip_forward=1
-    else 
-        [ -n "$gw_if" ] && iptables --table nat --delete POSTROUTING     \
-                                        --out-interface $gw_if -j MASQUERADE
-        iptables  --delete FORWARD --in-interface ${name}  -j ACCEPT
-    fi
-}
-# ----
-
 start_vm() {
 
     # command line options
     local immutable="-snapshot"
     local nogfx="-nographic"
-    local detach="false"
+    local detach=""
 
     echo "$@" | grep -q "rw" && immutable=""
     echo "$@" | grep -q "gfx" && nogfx=""
-    echo "$@" | grep -q "detach" && detach="true"
-
-    # check if we are root (we need to be, so use sudo if we aren't).
-    local sudo=""
-    local user="$(id -un)"
-    local sudo_user=""
-    [ "$user" != "root" ] && { sudo=sudo ; sudo_user="sudo -u $user" ; }
+    echo "$@" | grep -q "detach" && detach="-d -m"
 
     [ -f "$pidfile" ] && {
         $sudo kill -s 0 $(cat "$pidfile" 2>/dev/null) 2>/dev/null && {
@@ -156,19 +115,10 @@ start_vm() {
         echo "The VM image will be *mutable*, all changes will persist."
         echo ; }
 
-    # prepare forwarding script to be executed in the screen session
-    local ipt_script=`mktemp`
-    declare -f ip_forward_and_nat > "$ipt_script"
-    declare -f tune_kvm_module >> "$ipt_script"
-    echo "name=\"$name\"" >> "$ipt_script"
-    echo '$1 && tune_kvm_module' >> "$ipt_script"
-    echo 'ip_forward_and_nat $1' >> "$ipt_script"
-    chmod 755 "$ipt_script"
+    tune_kvm_module
 
-    screen -A -S "$name" \
-        $sudo bash -c "
-            $detach && $sudo_user screen -d $name ;
-            $ipt_script true ;
+    screen $detach -A -S "$name" \
+        bash -c "
             $qemu                                                                   \
                 -monitor telnet:127.0.0.1:$hmp_port,server,nowait,nodelay           \
                 -pidfile \"$pidfile\"                                               \
@@ -181,15 +131,14 @@ start_vm() {
                 -enable-kvm	                                                        \
                 -machine pc,accel=kvm                                               \
                 -net nic,model=virtio,vlan=0                                        \
-                -net tap,vlan=0,ifname=$name,script=\"$net_up\",downscript=\"$net_dn\"  \
+                -net user,vlan=0,net=$net,hostname=$name,hostfwd=tcp::$ssh_port-:22  \
                 -boot cdn                                                           \
                 -drive file=$disk_image,if=virtio,index=0,media=disk                \
                 $cdrom                                                              \
                 $immutable ;
-            $ipt_script false ;
-            rm -f \"$pidfile\" \"$ipt_script\" ; " 
+            rm -f \"$pidfile\" ; " 
 
-    $detach && {
+    [ "$detach" != "" ] && {
         echo "-------------------------------------------"
         echo " The VM $name has been started and"
         echo " detached from this terminal. Run"
