@@ -20,16 +20,16 @@
 #   then:
 #    update-grub
 #
-# - Configure static networking according to the 'net' setting above
+# - Configure dhcp networking
 #
 # - SSH id:
 #    mkdir -p .ssh
 #    ssh-keygen -f .ssh/id_rsa.test_vm
-#    ssh-copy-id -i .ssh/id_rsa.test_vm.pub root@<ip address>
-#    ssh-copy-id -i .ssh/id_rsa.test_vm.pub user@<ip address>
+#    ssh-copy-id -i .ssh/id_rsa.test_vm.pub -p $ssh_port root@localhost
+#    ssh-copy-id -i .ssh/id_rsa.test_vm.pub -p $ssh_port user@localhost
 #
 # - mount the local export dir:
-#   mount -t 9p -o trans=virtio export /<whereever> -oversion=9p2000.L,posixacl,cache=loose
+#   mount -t 9p -o trans=virtio export /<whereever> -oversion=9p2000.L,posixacl,cache=none
 #   (check mtab entry; move to fstab)
 # ----
 
