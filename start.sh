@@ -127,7 +127,7 @@ start_vm() {
                 -smp \"$cpu\"                                                       \
                 -cpu host                                                           \
                 $nogfx                                                              \
-                -virtfs local,id=\"export\",path=\"$export_dir\",security_model=passthrough,mount_tag=export \
+                -virtfs local,id=\"export\",path=\"$export_dir\",security_model=none,mount_tag=export \
                 -enable-kvm	                                                        \
                 -machine pc,accel=kvm                                               \
                 -net nic,model=virtio,vlan=0                                        \
