@@ -1,11 +1,8 @@
 #!/bin/bash
 
 # Settings
-       net="172.16.10.0/24"
+       net="172.16.10.0/24" # only matters inside of the VM (qemu user mode net)
        cpu="1"
- port_base="10000"           # TODO: auto-generate
-  hmp_port="$((port_base + 1))"
-  ssh_port="$((port_base + 2))"
        mem="512M"
 # ----
 #
@@ -23,6 +20,7 @@
 # - Configure dhcp networking
 #
 # - SSH id:
+#    source ./start.sh
 #    mkdir -p .ssh
 #    ssh-keygen -f .ssh/id_rsa.test_vm
 #    ssh-copy-id -i .ssh/id_rsa.test_vm.pub -p $ssh_port root@localhost
@@ -44,11 +42,15 @@ disk_image="$script_dir/${name}.raw"
 # this dir is exported to the VM
 export_dir="$(cd "$script_dir/../"; pwd)"
 
-   pidfile="$script_dir/$name.pid"
-   logfile="$script_dir/$name.log"
+   pidfile="$script_dir/${name}.pid"
+   netfile="$script_dir/${name}.net"
+   logfile="$script_dir/${name}.log"
 
     net_up="$script_dir/up.sh"
     net_dn="$script_dir/down.sh"
+
+    # source network config if present
+[ -f "$netfile" ] && source "$netfile"
 # ----
 
 tune_kvm_module() {
@@ -79,6 +81,24 @@ grok_qemu() {
     [ -z "$qemu" ] && qemu="`which qemu-kvm 2>/dev/null`"
     [ -z "$qemu" ] && qemu="`which kvm 2>/dev/null`"
     echo "$qemu"
+}
+# ----
+
+grok_port_base() {
+    local port_base=1024
+    local highest_port=$(  netstat -ntpl 2>/dev/null                     \
+                            | sed -n 's/.* [0-9.]\+:\([0-9]\+\) .*/\1/p' \
+                            | sort -n | tail -1 )
+
+    if [ -n "$highest_port" -a $highest_port -gt $port_base ] ; then
+        port_base=$((highest_port + 1))
+    fi
+
+    cat >"$netfile" << EOF
+port_base="$port_base"
+hmp_port="$((port_base + 1))"
+ssh_port="$((port_base + 2))"
+EOF
 }
 # ----
 
@@ -116,6 +136,8 @@ start_vm() {
         echo ; }
 
     tune_kvm_module
+    grok_port_base
+    source "$netfile"
 
     screen $detach -A -S "$name" \
         bash -c "
@@ -128,7 +150,6 @@ start_vm() {
                 -cpu host                                                           \
                 $nogfx                                                              \
                 -virtfs local,id=\"export\",path=\"$export_dir\",security_model=none,mount_tag=export \
-                -enable-kvm	                                                        \
                 -machine pc,accel=kvm                                               \
                 -net nic,model=virtio,vlan=0                                        \
                 -net user,vlan=0,net=$net,hostname=$name,hostfwd=tcp::$ssh_port-:22  \
@@ -136,7 +157,7 @@ start_vm() {
                 -drive file=$disk_image,if=virtio,index=0,media=disk                \
                 $cdrom                                                              \
                 $immutable ;
-            rm -f \"$pidfile\" ; " 
+            rm -f \"$pidfile\" \"$netfile\" ; "
 
     [ "$detach" != "" ] && {
         echo "-------------------------------------------"
