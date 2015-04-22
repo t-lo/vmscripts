@@ -30,6 +30,12 @@
 # - mount the local export dir:
 #   mount -t 9p -o trans=virtio export /<whereever> -oversion=9p2000.L,posixacl,cache=none
 #   (check mtab entry; move to fstab)
+#
+# ----
+#  Ideas
+#  - deb / rpm package generator w/ centralized scripts
+#  - system wide and per-user configurations and images
+#  - automated VM preparation (needs root pw, VM must boot via DHCP)
 # ----
 
 
