@@ -183,7 +183,6 @@ start_vm() {
 # ----
 
 poweroff() {
-    source "$netfile"
     (sleep 1; echo "quit") | nc 127.0.0.1 "$port_hmp"
     rm -f "$pidfile"
 }
