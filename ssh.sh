@@ -4,11 +4,11 @@ cd $(dirname ${BASH_SOURCE[0]})
 source start.sh
 
 [ -z "$port_22" ] && {
-    echo
-    echo "ERROR connecting to $name via SSH:"
-    echo " No ssh port forwarding has been configured for VM $name."
-    echo " Please add '22' to the list of forwarded ports."
-    echo
+    echo >&2
+    echo "ERROR connecting to $name via SSH:" >&2
+    echo " No ssh port forwarding has been configured for VM $name." >&2
+    echo " Please add '22' to the list of forwarded ports." >&2
+    echo >&2
     exit 1; }
 
 ssh     -i .ssh/id_rsa.test_vm          \
