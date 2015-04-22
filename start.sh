@@ -4,6 +4,7 @@
        net="172.16.10.0/24" # only matters inside of the VM (qemu user mode net)
        cpu="1"
        mem="512M"
+       forward_ports="22 80"
 # ----
 #
 # VM preparation
@@ -84,21 +85,33 @@ grok_qemu() {
 }
 # ----
 
-grok_port_base() {
-    local port_base=1024
-    local highest_port=$(  netstat -ntpl 2>/dev/null                     \
-                            | sed -n 's/.* [0-9.]\+:\([0-9]\+\) .*/\1/p' \
-                            | sort -n | tail -1 )
+grok_free_port() {
+    local ignored_ports="$@"
+    local start=1024
+    local p=""
+    {   netstat -ntpl 2>/dev/null   \
+            | sed -n 's/.* [0-9.]\+:\([0-9]\+\) .*/\1/p'
+        seq $start 65535
+        for p in $ignored_ports; do echo $p; done
+    } | sort -n | grep -A 130000 1024 | uniq -u | head -1
+}
+# ----
 
-    if [ -n "$highest_port" -a $highest_port -gt $port_base ] ; then
-        port_base=$((highest_port + 1))
-    fi
+grok_ports() {
+    local hmp=$(grok_free_port)
+    echo "port_hmp=\"$hmp\"" > "$netfile"
 
-    cat >"$netfile" << EOF
-port_base="$port_base"
-hmp_port="$((port_base + 1))"
-ssh_port="$((port_base + 2))"
-EOF
+    local acquired_ports="$hmp"
+    local p=""
+    local prev=""
+    for p in $forward_ports; do
+        [ -n "$prev" ] && echo -n "$prev,"
+        local l=$(grok_free_port $acquired_ports)
+        echo "port_$p=\"$l\"" >> "$netfile"
+        prev="hostfwd=::$l-:$p"
+        acquired_ports="$acquired_ports $l"
+    done
+    echo -n "$prev"
 }
 # ----
 
@@ -136,13 +149,13 @@ start_vm() {
         echo ; }
 
     tune_kvm_module
-    grok_port_base
+    local hostfwd=`grok_ports`
     source "$netfile"
 
     screen $detach -A -S "$name" \
         bash -c "
             $qemu                                                                   \
-                -monitor telnet:127.0.0.1:$hmp_port,server,nowait,nodelay           \
+                -monitor telnet:127.0.0.1:$port_hmp,server,nowait,nodelay           \
                 -pidfile \"$pidfile\"                                               \
                 -m \"$mem\"                                                         \
                 -rtc base=utc                                                       \
@@ -152,7 +165,7 @@ start_vm() {
                 -virtfs local,id=\"export\",path=\"$export_dir\",security_model=none,mount_tag=export \
                 -machine pc,accel=kvm                                               \
                 -net nic,model=virtio,vlan=0                                        \
-                -net user,vlan=0,net=$net,hostname=$name,hostfwd=tcp::$ssh_port-:22  \
+                -net user,vlan=0,net=$net,hostname=$name,$hostfwd                   \
                 -boot cdn                                                           \
                 -drive file=$disk_image,if=virtio,index=0,media=disk                \
                 $cdrom                                                              \
@@ -170,13 +183,14 @@ start_vm() {
 # ----
 
 poweroff() {
-    local if="$1"
-    (sleep 1; echo "quit") | nc 127.0.0.1 "$hmp_port"
+    source "$netfile"
+    (sleep 1; echo "quit") | nc 127.0.0.1 "$port_hmp"
     rm -f "$pidfile"
 }
 # ----
 
 [ `basename "$0"` = "start.sh" ] && {
+    cd $(dirname ${BASH_SOURCE[0]})
     case $1 in
         *off)   poweroff $@ ;;
         *)      start_vm $@ ;;
