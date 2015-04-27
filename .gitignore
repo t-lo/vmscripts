@@ -1,5 +1,1 @@
-*.iso
-*.raw
-*.pid
-*.net
-.ssh/*
+.*.swp

@@ -1,0 +1,97 @@
+#!/bin/bash -ue
+#
+# 'vmscripts' low-level VM management scripts main call entry point
+#
+# Copyright © 2015 Thilo Fromm. Released under the terms of the GNU GLP v3.
+#
+#    vmscripts is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    vmscripts is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with vmscripts. If not, see <http://www.gnu.org/licenses/>.#
+#
+
+VM_CONFIG_PATH="$HOME/.vmscripts"
+export VM_CONFIG_PATH
+
+die() {
+    echo                >&2
+    echo "ERROR: $@"    >&2
+    echo                >&2
+    exit 1
+}
+# ----
+
+write_rtconf() {
+    echo "$1=\"$2\"" >> "$vm_rtconf"
+}
+# ----
+
+setup_env() {
+    vm_name="$1"
+
+    vm_path="$VM_CONFIG_PATH/$vm_name"
+
+    local vm_prefix="$vm_path/$vm_name"
+    vm_disk_image="${vm_prefix}.raw"
+    vm_iso_image="${vm_prefix}.iso"
+
+    vm_export_dir="$(cd "$(pwd)/../"; pwd)"
+
+    vm_pidfile="${vm_prefix}.pid"
+    vm_logfile="${vm_prefix}.log"
+
+    vm_rtconf="${vm_prefix}.run"
+    vm_config="${vm_prefix}.cfg"
+
+    # source static and run time config if present
+    [ -f "$vm_config" ] && source "$vm_config"
+    [ -f "$vm_rtconf" ] && source "$vm_rtconf"
+
+    vm_tools_initialized="YES"
+
+    export vm_name vm_path vm_disk_image vm_iso_image vm_export_dir vm_pidfile \
+           vm_logfile vm_rtconf vm_config vm_tools_initialized write_rtconf
+}
+# ----
+
+usage () {
+    echo
+    echo " vm: Illegal argument encountered."
+    echo " $@"
+    echo " Usage:"
+    echo "    vm <creat|ls|start|attach|ssh|off>"
+    echo
+    exit 1
+}
+# ----
+
+vm_main() {
+    local vm=""
+
+    [ $# -lt 1 ] && usage "Missing VM command."
+    local cmd="$1"; shift
+    [ $# -ge 1 ] && {
+        vm="$1"; shift; }
+
+    local script=$(which "vm-${cmd}.sh" 2>/dev/null)
+    [ -z "$script" ] && usage "Unknown command '$cmd'."
+
+    setup_env "$vm"
+    source $script
+    vm_${cmd} "$vm" $@
+}
+# ----
+
+if [ `basename "$0"` = "vm" ] ; then
+    vm_main $@
+else
+    true
+fi
