@@ -18,12 +18,11 @@
 #    along with vmscripts. If not, see <http://www.gnu.org/licenses/>.#
 #
 
+vmscripts_prereq="none"
 
-usage() {
+ls_usage() {
     echo " Usage:"
     echo "    vm ls [-a]  - List VMs. '-a' limits the list to active VMs."
-    echo
-    exit 1
 }
 # ----
 

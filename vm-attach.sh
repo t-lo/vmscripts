@@ -18,22 +18,16 @@
 #    along with vmscripts. If not, see <http://www.gnu.org/licenses/>.#
 #
 
-usage() {
-    echo
-    echo " vm attach: Illegal argument encountered."
-    echo " $@"
-    echo
+vmscripts_prereq="active"
+
+attach_usage() {
     echo " Usage:"
-    echo "    vm attach <vm-name>"
-    echo
-    exit 1
+    echo "    vm attach <name>  -  attaches to the serial console of VM <name>"
 }
 # ----
 
 vm_attach() {
-    local vm="$1"
-    [ -z "$vm" ] && usage "vm-name argument is missing."
-    vm ls -a | grep "$vm" || usage "VM $vm is not running."
+    vm ls -a | grep "$vm_name" || usage "VM $vm_name is not running."
 
     screen -rd "$vm"
 }

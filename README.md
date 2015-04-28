@@ -1,3 +1,3 @@
-# qemu-scripts
+# vmscripts
 
-A few scripts to help with controlling QEmu.
+Collection of simplistic scripts to manage simple, headless virtual machines.

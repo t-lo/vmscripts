@@ -18,6 +18,13 @@
 #    along with vmscripts. If not, see <http://www.gnu.org/licenses/>.#
 #
 
+vmscripts_prereq="active"
+
+off_usage() {
+    echo " Usage:"
+    echo "    vm off <name> -  Power off VM <name>."
+}
+# ----
 
 vm_off() {
     (sleep 1; echo "quit") | nc 127.0.0.1 "$vm_port_hmp" >/dev/null 2>&1

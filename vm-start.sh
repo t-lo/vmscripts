@@ -18,6 +18,18 @@
 #    along with vmscripts. If not, see <http://www.gnu.org/licenses/>.#
 #
 
+vmscripts_prereq="exist"
+
+start_usage() {
+    echo " Usage:"
+    echo "  vm start <name> [rw] [bg] [gfx] - start VM <name>"
+    echo
+    echo "   [rw]   'mutable' mode - make changes to disk image persist."
+    echo "   [bg]    start in background (attach with  'vm attach <name>')"
+    echo "  [gfx]    start with graphics (SDL out) enabled."
+}
+# ----
+
 tune_kvm_module() {
     local modname=""
 
@@ -84,22 +96,8 @@ grok_ports() {
 }
 # ----
 
-usage() {
-    echo
-    echo " vm start: Illegal argument encountered."
-    echo " $@"
-    echo
-    echo " Usage:"
-    echo "    vm start [rw|bg|gfx] <vm-name>"
-    echo
-    exit 1
-}
-# ----
-
 sanity() {
     # basic sanity
-    [ -z "$vm_name" ] && usage "The vm-name argument is missing."
-
     [ -f "$vm_pidfile" ] && {
         kill -s 0 $(cat "$vm_pidfile" 2>/dev/null) 2>/dev/null \
             && die "VM $vm_name already running"

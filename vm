@@ -20,6 +20,34 @@
 
 VM_CONFIG_PATH="$HOME/.vmscripts"
 export VM_CONFIG_PATH
+# ----
+
+vm_usage() {
+    local ret=0
+    echo
+    if [ $# -ge 1 ] ; then
+        echo " $@"
+            ret=1
+    fi
+    echo " Usage:"
+    echo "    vm <creat|ls|start|attach|ssh|off>"
+    echo
+    exit $ret
+}
+# ----
+
+usage() {
+    local ret=0
+    echo
+    if [ $# -ge 1 ] ; then
+        echo " vm $vm_cmd: $@"
+        ret=1
+    fi
+    ${vm_cmd}_usage
+    echo
+    exit $ret
+}
+# ----
 
 die() {
     echo                >&2
@@ -36,10 +64,10 @@ write_rtconf() {
 
 setup_env() {
     vm_name="$1"
-
     vm_path="$VM_CONFIG_PATH/$vm_name"
 
     local vm_prefix="$vm_path/$vm_name"
+
     vm_disk_image="${vm_prefix}.raw"
     vm_iso_image="${vm_prefix}.iso"
 
@@ -62,31 +90,44 @@ setup_env() {
 }
 # ----
 
-usage () {
-    echo
-    echo " vm: Illegal argument encountered."
-    echo " $@"
-    echo " Usage:"
-    echo "    vm <creat|ls|start|attach|ssh|off>"
-    echo
-    exit 1
+source_script() {
+    local script="$1"
+
+    source "$script"
+
+    # check VM name command line option
+    [ "$vmscripts_prereq" = "none" ] && return
+
+    [ -z "$vm_name" ] &&    \
+        usage "This command takes a mandatory <name> argument"
+
+    vm ls | grep -qw "$vm_name" || \
+        usage "Unknown VM ${vm_name}. Try 'vm ls' to get a list."
+    [ "$vmscripts_prereq" = "exist" ] && return
+
+    vm ls -a | grep -qw "$vm_name" || \
+        usage "VM ${vm_name} is currently inactive. Try starting it with 'vm start $vm_name'."
 }
 # ----
 
 vm_main() {
-    local vm=""
+    vm_name=""
+    vm_cmd=""
 
-    [ $# -lt 1 ] && usage "Missing VM command."
-    local cmd="$1"; shift
-    [ $# -ge 1 ] && {
-        vm="$1"; shift; }
+    [ $# -lt 1 ] && vm_usage "No command provided."
+    [ "$1" = "-h" ] && vm_usage
 
-    local script=$(which "vm-${cmd}.sh" 2>/dev/null)
-    [ -z "$script" ] && usage "Unknown command '$cmd'."
+    vm_cmd="$1"; shift
+    export vm_cmd
 
-    setup_env "$vm"
-    source $script
-    vm_${cmd} "$vm" $@
+    local script=$(which "vm-${vm_cmd}.sh" 2>/dev/null)
+    [ -z "$script" ] && vm_usage  "Unknown command '$vm_cmd'."
+
+    setup_env "${1-}"
+    source_script "$script"
+    [ "${1-}" = "-h" ] && usage
+
+    vm_${vm_cmd} $@
 }
 # ----
 
