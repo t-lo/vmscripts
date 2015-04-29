@@ -45,11 +45,19 @@ vm_ls() {
     local line=""
     for name in $(ls -1 "$VM_CONFIG_PATH/") ; do
         [ ! -d "$VM_CONFIG_PATH/$name" ] && continue
-        local a=""
-        if echo "$active" | grep -qw "$name"; then
-            a="(active)"
+        local flags=""
+        # check for soft-linked VM; display link source
+        if [ -L "$VM_CONFIG_PATH/$name/${name}.img" ] ; then
+            local src=$(basename                                    \
+                    $(readlink "$VM_CONFIG_PATH/$name/${name}.img"  \
+                        | sed 's/\.img//'))
+            flags="$flags (->$src)"
         fi
-        printf "%30s %20s\n" "$name" "$a"
+        # check whether it's currently active
+        if echo "$active" | grep -qw "$name"; then
+            flags="$flags (active)"
+        fi
+        printf "%30s %20s\n" "$name" "$flags"
     done
 }
 # ----
