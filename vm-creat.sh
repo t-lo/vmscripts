@@ -62,12 +62,14 @@ vmscripts_prereq="name"
 
 creat_usage () {
     echo " Usage:"
-    echo -n "  vm creat <name> [<disk-size-or-path-to-image>] [<path-to-iso-image>]"
+    echo -n "  vm creat <name> [-m] [<disk-size-or-path-to-image>] [<path-to-iso-image>]"
     echo " [<mem-size>] [<nr-of-cpus>] [<internal-network>] [<list-of-forwarded-ports>]"
     echo
-    echo " The arruments must be provided in order. Using '' for a parameter will use the default."
+    echo " All arguments must be provided in order. The [-m] flag may be omitted, though."
+    echo " Using '' for a parameter will use its default."
     echo
     echo "   <name>                        unique identifier for this VM"
+    echo "  [-m]                           Move source disk image and ISO instead of copying."
     echo "  [<disk-size-or-path-to-image>] Either the size of the harddisk image"
     echo "                                 (followed by K, M, G or T)"
     echo "                                 or path to an existing image"
@@ -81,8 +83,9 @@ creat_usage () {
 # ----
 
 image_and_iso() {
-    local disk="$1"
-    local iso="$2"
+    local op="$1"
+    local disk="$2"
+    local iso="$3"
 
     [ -e "$vm_path" ] && \
         die "The path '$vm_path' already exists. Remove it or choose a different name for the VM."
@@ -90,14 +93,14 @@ image_and_iso() {
     mkdir "$vm_path"
     local img="$vm_path/${name}.img"
     if [ -e "$disk" ] ; then
-        cp -v "$disk" "$img"
+        $op -v "$disk" "$img"
     else
         qemu-img create -f raw "$img" "$disk"
     fi
 
     img="$vm_path/${name}.iso"
     if [ -e "$iso" ] ; then
-        cp -v "$iso" "$img"
+        $op -v "$iso" "$img"
     fi
 }
 # ----
@@ -110,13 +113,18 @@ write_config() {
 vm_creat() {
     local name="$1"
     local disk_size_or_image="${2-$def_disk}"
+    local cp_mv="cp"
+    [ "$disk_size_or_image" = "-m" ] && {
+        cp_mv="mv"
+        shift
+        disk_size_or_image="${2-$def_disk}"; }
     local iso_image="${3-}"
     local mem="${4-$def_mem}"
     local cpu="${5-$def_cpu}"
     local net="${6-$def_net}"
     local ports="${7-$def_forward_ports}"
     
-    image_and_iso "$disk_size_or_image" "$iso_image"
+    image_and_iso "$cp_mv" "$disk_size_or_image" "$iso_image"
 
     rm -f "$vm_config"
     write_config "net" "$net"
