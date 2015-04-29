@@ -18,6 +18,35 @@
 #    along with vmscripts. If not, see <http://www.gnu.org/licenses/>.#
 #
 
+#
+# MODULES API
+# - modules must be in the current PATH
+# - modules are named 'vm-<modname>.sh'
+# - modules implement at least two functions:
+#
+#   <modname>_usage() {
+#       echo "Usage: vm <modname> ...."
+#   }
+#
+#  vm_<modname>() {
+#       # main entry function of module
+#  }
+#
+# - modules define one global variable determining the importance of the
+#   <vm-name> argument:
+#
+#  vmscripts_prereq=""
+#
+#  Values:
+#    'none'   - VM name must neither be provided nor needs the VM to exist
+#    'name'   - A VM name must be provided
+#    'exist'  - A name must be provided and the corresponding VM must exist
+#    'active' - The VM specified by the <name> argument must be up + running
+#
+# Variables defined and exported by "vm" main entry script
+# - basically, look at setup_env()
+# - also, all values from the config and the run time config
+
 VM_CONFIG_PATH="$HOME/.vmscripts"
 export VM_CONFIG_PATH
 # ----
@@ -68,7 +97,7 @@ setup_env() {
 
     local vm_prefix="$vm_path/$vm_name"
 
-    vm_disk_image="${vm_prefix}.raw"
+    vm_disk_image="${vm_prefix}.img"
     vm_iso_image="${vm_prefix}.iso"
 
     vm_export_dir="$(cd "$(pwd)/../"; pwd)"
@@ -100,6 +129,7 @@ source_script() {
 
     [ -z "$vm_name" ] &&    \
         usage "This command takes a mandatory <name> argument"
+    [ "$vmscripts_prereq" = "name" ] && return
 
     vm ls | grep -qw "$vm_name" || \
         usage "Unknown VM ${vm_name}. Try 'vm ls' to get a list."
