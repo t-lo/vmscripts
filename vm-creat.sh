@@ -23,7 +23,7 @@ def_disk="4G"
 def_mem="512M"
 def_cpu="1"
 def_net="172.16.10.0/24"
-def_forward_ports="22 25 80"
+def_forward_ports="22,25,80"
 
 #
 # VM preparation
@@ -66,7 +66,7 @@ creat_usage () {
     echo " [<mem-size>] [<nr-of-cpus>] [<internal-network>] [<list-of-forwarded-ports>]"
     echo
     echo " All arguments must be provided in order. The [-m] flag may be omitted, though."
-    echo " Using '' for a parameter will use its default."
+    echo " Using '-' for a parameter will use its default."
     echo
     echo "   <name>                        unique identifier for this VM"
     echo "  [-m]                           Move source disk image and ISO instead of copying."
@@ -78,7 +78,8 @@ creat_usage () {
     echo "  [<mem-size>]                   Amount of memory (followed by M or G). Default: $def_mem"
     echo "  [<nr-of-cpus>]                 Virtual CPUs count. Default: $def_cpu"
     echo "  [<internal-network>]           VM-internal network. Default: $def_net"
-    echo "  [<list-of-forwarded-ports>]    List of ports forwarded to host ports."
+    echo "  [<list-of-forwarded-ports>]    List of ports forwarded to host ports,"
+    echo "                                 separated by comma (e.g.  '22,80,554')"
 }
 # ----
 
@@ -110,27 +111,38 @@ write_config() {
 }
 # ----
 
+val_or_def() {
+    local val="$1"
+    local def="$2"
+
+    if [ -z "$val" -o "$val" = "-" ] ; then
+        echo "$def"
+    else
+        echo "$val"
+    fi
+}
+# ----
+
 vm_creat() {
     local name="$1"
-    local disk_size_or_image="${2-$def_disk}"
+    local disk_size_or_image=$(val_or_def "${2-}" "${def_disk}")
     local cp_mv="cp"
     [ "$disk_size_or_image" = "-m" ] && {
         cp_mv="mv"
         shift
-        disk_size_or_image="${2-$def_disk}"; }
-    local iso_image="${3-}"
-    local mem="${4-$def_mem}"
-    local cpu="${5-$def_cpu}"
-    local net="${6-$def_net}"
-    local ports="${7-$def_forward_ports}"
-    
+        disk_size_or_image=$(val_or_def "${2-}" "${def_disk}") ; }
+    local iso_image=$(val_or_def "${3-}" "")
+    local mem=$(val_or_def "${4-}" "${def_mem}")
+    local cpu=$(val_or_def "${5-}" "${def_cpu}")
+    local net=$(val_or_def "${6-}" "${def_net}")
+    local ports=$(val_or_def "${7-}" "${def_forward_ports}")
     image_and_iso "$cp_mv" "$disk_size_or_image" "$iso_image"
 
     rm -f "$vm_config"
     write_config "net" "$net"
     write_config "cpu" "$cpu"
     write_config "mem" "$mem"
-    write_config "forward_ports" "$ports"
+    write_config "forward_ports" "${ports//,/ }"
 
     echo
     echo " VM $vm_name generated."
