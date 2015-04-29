@@ -28,7 +28,6 @@ attach_usage() {
 
 vm_attach() {
     vm ls -a | grep "$vm_name" || usage "VM $vm_name is not running."
-
     screen -rd "$vm"
 }
 # ----
