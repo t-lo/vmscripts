@@ -187,18 +187,21 @@ vm_complete() {
     local cmd="${words[1]}"
     source_with_defaults "$cmd" || return
     
-    [ $cword -eq 2 ] && case $vmscripts_prereq in
-        exist)
-            compgen -W "$(vm ls                  \
-                            | awk '{print $1}')" -- ${cur}; return ;;
-        inactive)
-            compgen -W "$(vm ls                  \
-                            | grep -v '(active)' \
-                            | awk '{print $1}')" -- ${cur}; return ;;
-        active)
-            compgen -W "$(vm ls -a               \
-                            | awk '{print $1}')" -- ${cur}; return ;;
-    esac
+    while true; do
+        [ $cword -eq 2 ] && case $vmscripts_prereq in
+            exist)
+                compgen -W "$(vm ls                  \
+                                | awk '{print $1}')" -- ${cur}; break ;;
+            inactive)
+                compgen -W "$(vm ls                  \
+                                | grep -v '(active)' \
+                                | awk '{print $1}')" -- ${cur}; break ;;
+            active)
+                compgen -W "$(vm ls -a               \
+                                | awk '{print $1}')" -- ${cur}; break ;;
+        esac
+        break
+    done
 
     ${cmd}_complete "$cword" $@
 }

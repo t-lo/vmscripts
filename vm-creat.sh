@@ -83,6 +83,19 @@ creat_usage () {
 }
 # ----
 
+creat_complete() {
+    local cword="$1"; shift
+    local words=( $@ )
+    [ "${words[3]-}" = "-m" ] && cword="$((cword-1))"
+    local cur="${words[$cword]-}"
+
+    case $cword in
+        3) echo -n "---DEFAULT---" ;;
+        4) echo -n "---DEFAULT---" ;;
+    esac
+}
+# ----
+
 image_and_iso() {
     local op="$1"
     local disk="$2"

@@ -1,3 +1,5 @@
 # vmscripts
 
-Collection of simplistic scripts to manage simple, headless virtual machines.
+Collection of simplistic scripts to manage simple virtual machines.
+
+
