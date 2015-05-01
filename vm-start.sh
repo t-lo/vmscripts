@@ -18,7 +18,7 @@
 #    along with vmscripts. If not, see <http://www.gnu.org/licenses/>.#
 #
 
-vmscripts_prereq="exist"
+vmscripts_prereq="inactive"
 
 start_usage() {
     echo " Usage:"

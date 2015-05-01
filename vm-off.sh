@@ -27,8 +27,11 @@ off_usage() {
 # ----
 
 vm_off() {
+    local pid="$(cat $vm_pidfile)" 
     (sleep 1; echo "quit") | nc 127.0.0.1 "$vm_port_hmp" >/dev/null 2>&1
+    kill -0 "$pid" 2>/dev/null && die "Unable to power off VM $vm_name."
     rm -f "$vm_pidfile"
+    echo "VM $vm_name powered off."
 }
 # ----
 

@@ -22,47 +22,44 @@
 # MODULES API
 # - modules must be in the current PATH
 # - modules are named 'vm-<modname>.sh'
-# - modules implement at least two functions:
-#
-#   <modname>_usage() {
-#       echo "Usage: vm <modname> ...."
-#   }
+# - modules *MUST* immplement at least a main function like
 #
 #  vm_<modname>() {
 #       # main entry function of module
 #  }
 #
-# - modules define one global variable determining the importance of the
+# - modules *MAY* implement these utility functions:
+#
+#   <modname>_usage() {
+#       echo "Usage: vm <modname> ...."
+#   }
+#
+#   <modname>_complete() {
+#       # auto-complete helper for the module
+#   }
+#
+# - modules *MAY* define one global variable determining the importance of the
 #   <vm-name> argument:
 #
 #  vmscripts_prereq=""
 #
 #  Values:
-#    'none'   - VM name must neither be provided nor needs the VM to exist
-#    'name'   - A VM name must be provided
-#    'exist'  - A name must be provided and the corresponding VM must exist
-#    'active' - The VM specified by the <name> argument must be up + running
+#    'none'      - VM name must neither be provided nor needs the VM to exist
+#    'name'      - A VM name must be provided
+#    'exist'     - A name must be provided and the corresponding VM must exist
+#    'inactive'  - The VM specified by the <name> argument must be powered off
+#    'active'    - The VM specified by the <name> argument must be up + running
 #
 # Variables defined and exported by "vm" main entry script
 # - basically, look at setup_env()
 # - also, all values from the config and the run time config
 
+#
+# Variables and Functions to be used by modules
+#
+
 VM_CONFIG_PATH="$HOME/.vmscripts"
 export VM_CONFIG_PATH
-# ----
-
-vm_usage() {
-    local ret=0
-    echo
-    if [ $# -ge 1 ] ; then
-        echo " $@"
-            ret=1
-    fi
-    echo " Usage:"
-    echo "    vm <creat|ls|start|attach|ssh|off>"
-    echo
-    exit $ret
-}
 # ----
 
 usage() {
@@ -88,6 +85,36 @@ die() {
 
 write_rtconf() {
     echo "$1=\"$2\"" >> "$vm_rtconf"
+}
+# ----
+
+#
+# 'vm' script internal Variables and Functions
+#
+
+function source_with_defaults() {
+    local cmd="$1"
+    local script=$(which "vm-${cmd}.sh" 2>/dev/null)
+    [ -z "$script" ] && return 1
+
+    vmscripts_prereq="none"
+    eval "${cmd}_usage()    { return ; }"
+    eval "${cmd}_complete() { return ; }"
+    source "$script"
+}
+# ----
+
+vm_usage() {
+    local ret=0
+    echo
+    if [ $# -ge 1 ] ; then
+        echo " $@"
+            ret=1
+    fi
+    echo " Usage:"
+    echo "    vm <creat|ls|slink|start|ports|attach|ssh|off|purge>"
+    echo
+    exit $ret
 }
 # ----
 
@@ -119,10 +146,11 @@ setup_env() {
 }
 # ----
 
-source_script() {
-    local script="$1"
+initialize_command() {
+    local cmd="$1"
 
-    source "$script"
+    source_with_defaults "$cmd" || \
+        vm_usage  "Unknown command '$vm_cmd'."
 
     # check VM name command line option
     [ "$vmscripts_prereq" = "none" ] && return
@@ -135,8 +163,44 @@ source_script() {
         usage "Unknown VM ${vm_name}. Try 'vm ls' to get a list."
     [ "$vmscripts_prereq" = "exist" ] && return
 
-    vm ls -a | grep -qw "$vm_name" || \
-        usage "VM ${vm_name} is currently inactive. Try starting it with 'vm start $vm_name'."
+    case "$vmscripts_prereq" in
+    active)
+        vm ls -a | grep -qw "$vm_name" || \
+            usage "VM ${vm_name} is currently inactive. Try starting it with 'vm start $vm_name'."
+            ;;
+    inactive)
+        vm ls | grep -v '(active)' | grep -qw "$vm_name" || \
+            usage "VM ${vm_name} is currently active. Try shutting it down with 'vm off $vm_name'."
+            ;;
+    esac
+}
+# ----
+
+vm_complete() {
+    local cword="$1"; shift
+    local words=( $@ )
+    local cur="${words[$cword]-}"
+    local opts="creat ls slink start ports attach ssh off purge"
+
+    [ $cword -eq 1 ] && { compgen -W "${opts}" -- ${cur}; return; }
+
+    local cmd="${words[1]}"
+    source_with_defaults "$cmd" || return
+    
+    [ $cword -eq 2 ] && case $vmscripts_prereq in
+        exist)
+            compgen -W "$(vm ls                  \
+                            | awk '{print $1}')" -- ${cur}; return ;;
+        inactive)
+            compgen -W "$(vm ls                  \
+                            | grep -v '(active)' \
+                            | awk '{print $1}')" -- ${cur}; return ;;
+        active)
+            compgen -W "$(vm ls -a               \
+                            | awk '{print $1}')" -- ${cur}; return ;;
+    esac
+
+    ${cmd}_complete "$cword" $@
 }
 # ----
 
@@ -146,15 +210,15 @@ vm_main() {
 
     [ $# -lt 1 ] && vm_usage "No command provided."
     [ "$1" = "-h" ] && vm_usage
+    [ "$1" = "complete" ] && { shift; vm_complete $@; exit; }
 
     vm_cmd="$1"; shift
     export vm_cmd
 
-    local script=$(which "vm-${vm_cmd}.sh" 2>/dev/null)
-    [ -z "$script" ] && vm_usage  "Unknown command '$vm_cmd'."
-
     setup_env "${1-}"
-    source_script "$script"
+    local script=$(which "vm-${vm_cmd}.sh" 2>/dev/null)
+
+    initialize_command "$vm_cmd"
     [ "${1-}" = "-h" ] && usage
 
     vm_${vm_cmd} $@

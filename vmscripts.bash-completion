@@ -1,0 +1,10 @@
+#
+# Put this to /etc/bash_completion.d/ or just source it like
+#  source vmscripts.bash-completion
+#
+_vmscripts_complete() {
+    COMPREPLY=( $(vm complete "$COMP_CWORD" ${COMP_WORDS[@]}) )
+    return 0
+}
+
+complete -F _vmscripts_complete
