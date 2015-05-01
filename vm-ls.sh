@@ -29,7 +29,7 @@ ls_usage() {
 vm_ls_active() {
     local line=""
     for line in $(screen -ls | grep '\-vmscripts' | awk '{print $1}'); do
-        echo "${line/-vmscripts/}" | sed 's/[0-9]\+\.//g'
+        echo "${line/-vmscripts/}" | sed 's/^[0-9]\+\.//g'
     done
 
 }
@@ -45,19 +45,19 @@ vm_ls() {
     local line=""
     for name in $(ls -1 "$VM_CONFIG_PATH/") ; do
         [ ! -d "$VM_CONFIG_PATH/$name" ] && continue
-        local flags=""
+        local aflag="" lflag=""
         # check for soft-linked VM; display link source
         if [ -L "$VM_CONFIG_PATH/$name/${name}.img" ] ; then
             local src=$(basename                                    \
                     $(readlink "$VM_CONFIG_PATH/$name/${name}.img"  \
                         | sed 's/\.img//'))
-            flags="$flags (->$src)"
+            lflag="(->$src)"
         fi
         # check whether it's currently active
         if echo "$active" | grep -qw "$name"; then
-            flags="$flags (active)"
+            aflag="(active)"
         fi
-        printf "%30s %20s\n" "$name" "$flags"
+        printf "%20s %10.10s %20.20s\n" "$name" "$aflag" "$lflag"
     done
 }
 # ----
