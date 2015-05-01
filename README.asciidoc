@@ -7,7 +7,7 @@ vm - simplistic, per-user VM management.
 
 
 == SYNOPSIS ==
-*vm* *creat* | *ls* | *slink* | *start* | *ports* | *attach* | *ssh* | *off* | *purge*
+*vm* *creat* | *prepimg* | *ls* | *slink* | *start* | *ports* | *attach* | *ssh* | *off* | *purge*
 
 When called without any parameters, *vm* prints all available commands.
 *vm* '<command>' '-h' prints help for '<command>'.
@@ -19,6 +19,10 @@ VMs will be run using *qemu*. By default, VMs are headless, backgrounded, and
 run in "immutable" ("snapshot") mode - all changes to the VM will be lost after
 it is shut down.
 
+=== Access to and from the host system ===
+
+*Networking*
+
 Since VMs run in qemu's "user mode networking" where guest networking is
 completely opaque to the host, connections from the host (or
 any other machine on the host's network) are impossible. In order to connect
@@ -27,6 +31,20 @@ the *Files and Directories* section for more information. Ports forwarded by
 the VM are dynamically mapped to host ports when the VM is started. *vm ports*
 will show the mappings of an active VM.
 
+
+*File transfer*
+
+The host's root directory is made available via plan9 with the ID 'export'. The
+guest may mount it like e.g. 
+
+  mount -t 9p -o trans=virtio export /<whereever> -oversion=9p2000.L,posixacl,cache=none
+
+The command *vm prepimg* arranges for a mount on 'host_root' in the guest
+system's fstab.
+
+=== vm commands ===
+
+The commands are:
 *vm ls* :: List virtual machines.
 *vm slink* :: Soft-link an existing VM to a new VM.
 *vm start* :: Start a virtual machine.
@@ -34,8 +52,11 @@ will show the mappings of an active VM.
 *vm attach* :: Attach to the serial console of an active VM.
 *vm ssh* :: Run an SSH command (or an interactive shell) on an active VM.
 *vm off* :: Power off an active VM.
-*vm purge* :: Remove a VM, including all images and configurations.
+
+Also (for VM creation and removal):
 *vm creat* :: Create a new VM.
+*vm prepimg* :: Prepare a fresh VM to work well with *vmscripts*.
+*vm purge* :: Remove a VM, including all images and configurations.
 
 For a detailed description of each command refer to the sections below.
 
@@ -92,10 +113,6 @@ interactive shell if '[cmd]' was omitted.
 *vm off* '<name>' :: Power off active VM '<name>'.
 
 
-=== vm purge ===
-*vm purge* '<name>' :: Remove VM '<name>', including all images and configurations.
-
-
 === vm creat ===
 *vm creat* 'name' '[-m]' '[<disk-size-or-path-to-image>]' '[<path-to-iso-image>]' '[<mem-size>]' '[<nr-of-cpus>]' '[<internal-network>]' '[<list-of-forwarded-ports>]'::
 
@@ -121,6 +138,19 @@ The arguments are:
 *[<internal-network>]* :: VM-internal network.
 *[<list-of-forwarded-ports>]* :: List of ports forwarded to host ports,
                                  separated by comma (e.g.  '22,80,554')
+
+
+=== vm prepare ===
+*vm prepare* '<name>' :: Prepare VM '<name>' to play well with vmscripts.
+
+This preparation should be done once after the VM was set up. It will generate
+SSH keys and add those to the VM's root account, activate serial sonsole I/O
+for Linux and grub (so *vm attach* will work) and provides access to the
+exported host root inside the VM.
+
+
+=== vm purge ===
+*vm purge* '<name>' :: Remove VM '<name>', including all images and configurations.
 
 
 == Files and Directories ==

@@ -112,7 +112,7 @@ vm_usage() {
             ret=1
     fi
     echo " Usage:"
-    echo "    vm <creat|ls|slink|start|ports|attach|ssh|off|purge>"
+    echo "    vm <creat|prepare|ls|slink|start|ports|attach|ssh|off|purge>"
     echo
     exit $ret
 }
@@ -127,8 +127,6 @@ setup_env() {
     vm_disk_image="${vm_prefix}.img"
     vm_iso_image="${vm_prefix}.iso"
 
-    vm_export_dir="$(cd "$(pwd)/../"; pwd)"
-
     vm_pidfile="${vm_prefix}.pid"
     vm_logfile="${vm_prefix}.log"
 
@@ -141,7 +139,7 @@ setup_env() {
 
     vm_tools_initialized="YES"
 
-    export vm_name vm_path vm_disk_image vm_iso_image vm_export_dir vm_pidfile \
+    export vm_name vm_path vm_disk_image vm_iso_image vm_pidfile \
            vm_logfile vm_rtconf vm_config vm_tools_initialized write_rtconf
 }
 # ----
@@ -169,10 +167,12 @@ initialize_command() {
             usage "VM ${vm_name} is currently inactive. Try starting it with 'vm start $vm_name'."
             ;;
     inactive)
-        vm ls | grep -v '(active)' | grep -qw "$vm_name" || \
+        vm ls | grep '(active)' | grep -qw "$vm_name" && \
             usage "VM ${vm_name} is currently active. Try shutting it down with 'vm off $vm_name'."
             ;;
     esac
+
+    return 0
 }
 # ----
 
@@ -180,7 +180,7 @@ vm_complete() {
     local cword="$1"; shift
     local words=( $@ )
     local cur="${words[$cword]-}"
-    local opts="creat ls slink start ports attach ssh off purge"
+    local opts="creat prepare ls slink start ports attach ssh off purge"
 
     [ $cword -eq 1 ] && { compgen -W "${opts}" -- ${cur}; return; }
 
