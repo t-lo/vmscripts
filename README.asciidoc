@@ -3,7 +3,7 @@
 :toc!:
 
 == NAME ==
-vm - simplistic, per-user VM management
+vm - simplistic, per-user VM management.
 
 
 == SYNOPSIS ==
@@ -12,10 +12,32 @@ vm - simplistic, per-user VM management
 When called without any parameters, *vm* prints all available commands.
 *vm* '<command>' '-h' prints help for '<command>'.
 
-VMs will be run using *qemu*. 
-
 == DESCRIPTION ==
 *vm* is a command line tool for simplistic virtual machine management.
+
+VMs will be run using *qemu*. By default, VMs are headless, backgrounded, and
+run in "immutable" ("snapshot") mode - all changes to the VM will be lost after
+it is shut down.
+
+Since VMs run in qemu's "user mode networking" where guest networking is
+completely opaque to the host, connections from the host (or
+any other machine on the host's network) are impossible. In order to connect
+to services of the VM, port forwarding is required - refer to *vm creat* and
+the *Files and Directories* section for more information. Ports forwarded by
+the VM are dynamically mapped to host ports when the VM is started. *vm ports*
+will show the mappings of an active VM.
+
+*vm ls* :: List virtual machines.
+*vm slink* :: Soft-link an existing VM to a new VM.
+*vm start* :: Start a virtual machine.
+*vm ports* :: Print the host port -> VM port mapping of an active VM.
+*vm attach* :: Attach to the serial console of an active VM.
+*vm ssh* :: Run an SSH command (or an interactive shell) on an active VM.
+*vm off* :: Power off an active VM.
+*vm purge* :: Remove a VM, including all images and configurations.
+*vm creat* :: Create a new VM.
+
+For a detailed description of each command refer to the sections below.
 
 === vm ls ===
 *vm ls* '[-a]' :: List all VMs known to *vm*. A flag will be added to the
@@ -23,7 +45,7 @@ output for soft-linked or currently active.
 
 The arguments are:
 
-*[-a]* :: List only VMs which are currently active (running).
+*[-a]* :: List only VMs which are currently active.
 
 Example output:
 ...................
@@ -40,6 +62,38 @@ Example output:
 *vm slink* '<source>' '<destination>' :: Soft-link VM '<source>' to new VM
 '<dest>'. The VMs will share the same image, so be aware that modifying the
 source VM image will affect all VMs soft-linked from that source. 
+
+
+=== vm start ===
+*vm start* '<name>' '[fg]' '[gfx]' '[rw]' -  Start virtual machine '<name>'.
+
+The arguments are:
+
+*<name>* :: Name of the virtual machine to start.
+*[fg]* :: Run in foreground. You'll be connected to the VM's serial line.
+*[gfx]* :: Enable graphics output.
+*[rw]* :: Run in "mutable" mode. All changes to the VM will persist.
+
+
+=== vm ports ===
+*vm ports* '<name>' :: Print the host port -> VM port mapping of active VM
+'<name>'.
+
+=== vm attach ===
+*vm attach* '<name>' :: Attach to the serial console of active VM '<name>'.
+
+
+=== vm ssh ===
+*vm ssh* '<name>' '[cmd]' :: Run command '[cmd]' on active VM '<name>', or an
+interactive shell if '[cmd]' was omitted.
+
+
+=== vm off ===
+*vm off* '<name>' :: Power off active VM '<name>'.
+
+
+=== vm purge ===
+*vm purge* '<name>' :: Remove VM '<name>', including all images and configurations.
 
 
 === vm creat ===
@@ -73,6 +127,10 @@ The arguments are:
 
 *vmscripts* store all VM images (both disk and ISO) as well as the VM
 configuration in a per-VM sub-directory in '~/.vmscripts/'. 
+
+*~/.vmscripts/<name>/<name>.raw* :: The VM disk image
+*~/.vmscripts/<name>/<name>.iso* :: The VM ISO (cdrom, dvd) image, if applicable.
+*~/.vmscripts/<name>/<name>.cfg* :: The VM configuration, including port mappings.
 
 == AUTHOR ==
 vmscripts were written and are maintained by Thilo Alexander Fromm
