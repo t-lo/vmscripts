@@ -1,0 +1,88 @@
+= vm (1) =
+:numbered!:
+:toc!:
+
+== NAME ==
+vm - simplistic, per-user VM management
+
+
+== SYNOPSIS ==
+*vm* *creat* | *ls* | *slink* | *start* | *ports* | *attach* | *ssh* | *off* | *purge*
+
+When called without any parameters, *vm* prints all available commands.
+*vm* '<command>' '-h' prints help for '<command>'.
+
+VMs will be run using *qemu*. 
+
+== DESCRIPTION ==
+*vm* is a command line tool for simplistic virtual machine management.
+
+=== vm ls ===
+*vm ls* '[-a]' :: List all VMs known to *vm*. A flag will be added to the
+output for soft-linked or currently active.
+
+The arguments are:
+
+*[-a]* :: List only VMs which are currently active (running).
+
+Example output:
+...................
+    user@host $ vm ls
+             debian7   (active)
+           debian7.8   (active)          (->debian7)
+              devuan                     (->debian7)
+            fedora21   (active)
+                win8
+...................
+
+
+=== vm slink ===
+*vm slink* '<source>' '<destination>' :: Soft-link VM '<source>' to new VM
+'<dest>'. The VMs will share the same image, so be aware that modifying the
+source VM image will affect all VMs soft-linked from that source. 
+
+
+=== vm creat ===
+*vm creat* 'name' '[-m]' '[<disk-size-or-path-to-image>]' '[<path-to-iso-image>]' '[<mem-size>]' '[<nr-of-cpus>]' '[<internal-network>]' '[<list-of-forwarded-ports>]'::
+
+Create a new VM. Note that all arguments must be providedin order - except
+the [-m] flag, which may be omitted.
+All arguments except 'name' are optional; *vm creat* will use default
+values if arguments are missing. Alternatively, '-' may be used instead of
+an argument to use the default - this may be used to default one parameter
+and still set the ones after that.
+
+Issuing *vm creat -h* will print the default values.
+
+The arguments are:
+
+*<name>* ::  unique identifier for this VM
+*[-m]* :: Move source disk image and ISO instead of copying.
+*[<disk-size-or-path-to-image>]* :: Either the size of the harddisk image
+     (followed by K, M, G or T), or path to an existing image (which will be
+             copied).
+*[<path-to-iso-image>]* :: Path to an ISO image to use with the VM
+*[<mem-size>]* :: Amount of memory (followed by M or G).
+*[<nr-of-cpus>]* :: Virtual CPUs count.
+*[<internal-network>]* :: VM-internal network.
+*[<list-of-forwarded-ports>]* :: List of ports forwarded to host ports,
+                                 separated by comma (e.g.  '22,80,554')
+
+
+== Files and Directories ==
+
+*vmscripts* store all VM images (both disk and ISO) as well as the VM
+configuration in a per-VM sub-directory in '~/.vmscripts/'. 
+
+== AUTHOR ==
+vmscripts were written and are maintained by Thilo Alexander Fromm
+(kontakt@thilo-fromm.de).
+
+== RESOURCES ==
+Github project: <https://github.com/t-lo/vmscripts>
+
+
+== COPYING ==
+Copyright \(C) 2015 Thilo Alexander Fromm. Relased under the terms of the
+GNU GPL v3.
+
