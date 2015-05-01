@@ -25,38 +25,6 @@ def_cpu="1"
 def_net="172.16.10.0/24"
 def_forward_ports="22,25,80"
 
-#
-# VM preparation
-#  This could be done with a linux VM after creation (may be automated):
-#
-# - Serial output:
-#   in /etc/default/grub:
-#    GRUB_CMDLINE_LINUX_DEFAULT="console=tty0 console=ttyS0,1152008n1"
-#    GRUB_TERMINAL=serial
-#    GRUB_SERIAL_COMMAND="serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1"
-#
-#   then:
-#    update-grub
-#
-# - Configure dhcp networking
-#
-# - SSH id:
-#    source ./start.sh
-#    mkdir -p .ssh
-#    ssh-keygen -f .ssh/id_rsa.test_vm
-#    ssh-copy-id -i .ssh/id_rsa.test_vm.pub -p $ssh_port root@localhost
-#    ssh-copy-id -i .ssh/id_rsa.test_vm.pub -p $ssh_port user@localhost
-#
-# - mount the local export dir:
-#   mount -t 9p -o trans=virtio export /<whereever> -oversion=9p2000.L,posixacl,cache=none
-#   (check mtab entry; move to fstab)
-#
-# ----
-#  Ideas
-#  - deb / rpm package generator w/ centralized scripts
-#  - system wide and per-user configurations and images
-#  - automated VM preparation (needs root pw, VM must boot via DHCP)
-# ----
 
 vmscripts_prereq="name"
 
@@ -79,7 +47,7 @@ creat_usage () {
     echo "  [<nr-of-cpus>]                 Virtual CPUs count. Default: $def_cpu"
     echo "  [<internal-network>]           VM-internal network. Default: $def_net"
     echo "  [<list-of-forwarded-ports>]    List of ports forwarded to host ports,"
-    echo "                                 separated by comma (e.g.  '22,80,554')"
+    echo "                                 separated by comma (default '$def_forward_ports')"
 }
 # ----
 
