@@ -41,7 +41,7 @@ vm_ls() {
         return
     fi
 
-    local active="$(vm_ls_active)"
+    local active="$(vm_ls_active | sed 's/^\(.*\)$/ \1 /')"
     local line=""
     for name in $(ls -1 "$VM_CONFIG_PATH/") ; do
         [ ! -d "$VM_CONFIG_PATH/$name" ] && continue
@@ -54,7 +54,7 @@ vm_ls() {
             lflag="(->$src)"
         fi
         # check whether it's currently active
-        if echo "$active" | grep -qw "$name"; then
+        if echo "$active" | grep -qw " $name "; then
             aflag="(active)"
         fi
         printf "%20s %10.10s %20.20s\n" "$name" "$aflag" "$lflag"
