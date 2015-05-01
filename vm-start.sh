@@ -22,10 +22,10 @@ vmscripts_prereq="inactive"
 
 start_usage() {
     echo " Usage:"
-    echo "  vm start <name> [rw] [bg] [gfx] - start VM <name>"
+    echo "  vm start <name> [rw] [fg] [gfx] - start VM <name>"
     echo
     echo "   [rw]   'mutable' mode - make changes to disk image persist."
-    echo "   [bg]    start in background (attach with  'vm attach <name>')"
+    echo "   [fg]    run in foreground (detach with 'CTRL+a d')"
     echo "  [gfx]    start with graphics (SDL out) enabled."
 }
 # ----
@@ -111,7 +111,7 @@ vm_start() {
     # command line options
     local immutable="-snapshot"
     local nogfx="-nographic"
-    local detach=""
+    local detach="-d -m"
 
     sanity
 
@@ -126,7 +126,7 @@ vm_start() {
         write_rtconf "vm_immutable" "true"
     fi
 
-    echo "$@" | grep -q "bg" && detach="-d -m"
+    echo "$@" | grep -q "fg" && detach=""
 
     if echo "$@" | grep -q "gfx" ; then
         nogfx=""
