@@ -1,0 +1,10 @@
+Package: vmscripts
+Architecture: all
+Priority: extra
+Maintainer: Thilo Alexander Fromm <github@thilo-fromm.de>
+Version: %VERSION%
+Depends: bash, qemu, screen
+Description: Simplistic, per-user VM management.
+ vmscripts offer a set of commands to create, maintain, and run virtual
+ machines on a per-user basis. VMs are immutabel by default. Target use
+ cases include e.g. automated test systems that rely on VMs.

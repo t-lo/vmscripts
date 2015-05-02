@@ -1,0 +1,4 @@
+vm                          /usr/bin/
+vm-*.sh                     /usr/bin/
+vm.1.gz                     /usr/share/man/man1/
+vmscripts.bash-completion   /etc/bash_completion.d/

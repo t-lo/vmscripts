@@ -1,0 +1,5 @@
+vmscripts (0.1-1) stable; urgency=low
+
+  * Debian package builder
+
+ -- t-lo <kontakt@thilo-fromm.de>  Sat, 2 May 2015 8:34:24 +0200

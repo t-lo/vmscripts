@@ -59,6 +59,7 @@
 #
 
 VM_CONFIG_PATH="$HOME/.vmscripts"
+[ ! -d "$VM_CONFIG_PATH" ] && mkdir -p "$VM_CONFIG_PATH"
 export VM_CONFIG_PATH
 # ----
 
