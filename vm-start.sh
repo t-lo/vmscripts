@@ -41,19 +41,42 @@ tune_kvm_module() {
     grep -q 'svm' /proc/cpuinfo && modname="kvm-amd"
 
     if [ -z "$modname" ] ; then
+	    echo
         echo "Unable to determine virtualization hardware." 
-        echo "Nested virtualization may not work."
+        echo "Hardware virtualization support may not work."
         return
     fi
 
+    lsmod | grep -q "${modname/-/_}" || {
+        [ -n "$sudo" ] && {
+            echo
+            echo "Kernel module for hardware virtualization support is not loaded."
+            echo "We'll try and load $modname via 'sudo'."
+            echo "Please provide your password at the 'sudo' prompt, or hit"
+            echo "CTRL+C to continue without HW virtualization support (not recommended)"
+        }
+        $sudo modprobe "$modname"
+        echo "Kernel HW virtualization support enabled."
+    }
+
     local sysfs="/sys/module/${modname/-/_}/parameters/nested"
-    if [ "$(cat $sysfs)" != "Y" ] ; then
+    if [ ! -e "$sysfs" ] ; then
         echo
-        echo "kvm currently does not have the 'nested' option enabled."
-        echo "I'd like to enable it, but I need to 'sudo' for this."
-        echo "You may abort this by pressing CTRL+C at the sudo prompt."
-        $sudo rmmod $modname >/dev/null 2>&1 \
-            && $sudo modprobe $modname nested=1
+        echo "### NOTE: Nested virtualization not supported"
+        echo
+        return
+    fi
+
+    if [ "$(cat $sysfs)" != "Y" ] ; then
+        [ -n "$sudo" ] && {
+            echo
+            echo "kvm currently does not have the 'nested' option enabled."
+            echo "I'd like to enable it, but I need to 'sudo' for this."
+            echo "You may abort this by pressing CTRL+C at the sudo prompt."
+        }
+        $sudo rmmod $modname >/dev/null 2>&1
+    	$sudo modprobe $modname nested=1
+        echo "Kernel nested virtualization support enabled."
     fi
 }
 # ----
