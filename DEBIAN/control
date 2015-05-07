@@ -3,7 +3,7 @@ Architecture: all
 Priority: extra
 Maintainer: Thilo Alexander Fromm <github@thilo-fromm.de>
 Version: %VERSION%
-Depends: bash, qemu, screen
+Depends: bash, qemu, screen, netcat
 Description: Simplistic, per-user VM management.
  vmscripts offer a set of commands to create, maintain, and run virtual
  machines on a per-user basis. VMs are immutabel by default. Target use
