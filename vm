@@ -225,12 +225,12 @@ vm_main() {
     initialize_command "$vm_cmd"
     [ "${1-}" = "-h" ] && usage
 
-    vm_${vm_cmd} $@
+    vm_${vm_cmd} "$@"
 }
 # ----
 
 if [ `basename "$0"` = "vm" ] ; then
-    vm_main $@
+    vm_main "$@"
 else
     true
 fi
