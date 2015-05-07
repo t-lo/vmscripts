@@ -29,7 +29,8 @@ slink_usage() {
 vm_slink() {
     local dest="${2-}"
     local path="$VM_CONFIG_PATH/$dest"
-    [ "$dest" = "" ]    && die "The <dest> argument is mandatory."
+
+    [ "$dest" = "" ]    && usage "The <dest> argument is mandatory."
     [ -e "$path" ] && \
         die "VM path '$path' already exists. Use 'vm purge $dest' to remove it."
 
@@ -38,6 +39,9 @@ vm_slink() {
 
     [ -e "$vm_disk_image" ] && ln -s "$vm_disk_image" "$path/${dest}.img"
     [ -e "$vm_iso_image" ]  && ln -s "$vm_iso_image"  "$path/${dest}.iso"
+
+    local srcpath="$VM_CONFIG_PATH/$vm_name"
+    [ -e "$srcpath/.ssh" ]  && ln -s "$srcpath/.ssh"  "$path/"
 
     echo "$dest is now soft-linked to ${vm_name}."
 }
