@@ -74,7 +74,7 @@ tune_kvm_module() {
             echo "I'd like to enable it, but I need to 'sudo' for this."
             echo "You may abort this by pressing CTRL+C at the sudo prompt."
         }
-        $sudo rmmod $modname >/dev/null 2>&1
+        if ! $sudo rmmod $modname >/dev/null 2>&1 ; then return; fi
     	$sudo modprobe $modname nested=1
         echo "Kernel nested virtualization support enabled."
     fi
