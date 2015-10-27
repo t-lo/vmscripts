@@ -2,7 +2,7 @@
 #
 # 'vmscripts' low-level VM management scripts - VM creator
 #
-# Copyright © 2015 Thilo Fromm. Released under the terms of the GNU GLP v3.
+# Copyright © 2015 Thilo Fromm. Released under the terms of the GNU GPL v3.
 #
 #    vmscripts is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
