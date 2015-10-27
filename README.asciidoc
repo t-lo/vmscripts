@@ -116,7 +116,7 @@ interactive shell if '[cmd]' was omitted.
 === vm creat ===
 *vm creat* 'name' '[-m]' '[<disk-size-or-path-to-image>]' '[<path-to-iso-image>]' '[<mem-size>]' '[<nr-of-cpus>]' '[<internal-network>]' '[<list-of-forwarded-ports>]'::
 
-Create a new VM. Note that all arguments must be providedin order - except
+Create a new VM. Note that all arguments must be provided in order - except
 the [-m] flag, which may be omitted.
 All arguments except 'name' are optional; *vm creat* will use default
 values if arguments are missing. Alternatively, '-' may be used instead of
