@@ -157,6 +157,7 @@ vm_creat() {
     write_config "cpu" "$cpus"
     write_config "mem" "$mem"
     write_config "forward_ports" "${forward_ports//,/ }"
+    mkdir -p "$vm_iodir"
 
     echo
     echo " VM $vm_name generated."

@@ -114,7 +114,7 @@ vm_usage() {
             ret=1
     fi
     echo " Usage:"
-    echo "    vm <creat|prepare|ls|slink|start|ports|attach|ssh|off|purge>"
+    echo "    vm <creat|prepare|ls|slink|start|ports|iodir|attach|ssh|off|purge>"
     echo
     exit $ret
 }
@@ -129,6 +129,8 @@ setup_env() {
     vm_disk_image="${vm_prefix}.img"
     vm_iso_image="${vm_prefix}.iso"
 
+    vm_iodir="${vm_prefix}-io"
+
     vm_pidfile="${vm_prefix}.pid"
     vm_logfile="${vm_prefix}.log"
 
@@ -142,7 +144,8 @@ setup_env() {
     vm_tools_initialized="YES"
 
     export vm_name vm_path vm_disk_image vm_iso_image vm_pidfile \
-           vm_logfile vm_rtconf vm_config vm_tools_initialized write_rtconf
+           vm_logfile vm_rtconf vm_config vm_tools_initialized write_rtconf \
+           vm_iodir
 }
 # ----
 
@@ -182,7 +185,7 @@ vm_complete() {
     local cword="$1"; shift
     local words=( $@ )
     local cur="${words[$cword]-}"
-    local opts="creat prepare ls slink start ports attach ssh off purge"
+    local opts="creat prepare ls slink start ports iodir attach ssh off purge"
 
     [ $cword -eq 1 ] && { compgen -W "${opts}" -- ${cur}; return; }
 

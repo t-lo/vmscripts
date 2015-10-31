@@ -24,7 +24,7 @@ start_usage() {
     echo " Usage:"
     echo "  vm start <name> [rw] [fg] [gfx] - start VM <name>"
     echo
-    echo "   [rw]   'mutable' mode - make changes to disk image persist."
+    echo "   [rw]   'mutable' mode - changes to disk image will persist."
     echo "   [fg]    run in foreground (detach with 'CTRL+a d')"
     echo "  [gfx]    start with graphics (SDL out) enabled."
 }
@@ -176,6 +176,7 @@ vm_start() {
 
     local vm_screen_name="${vm_name}-vmscripts"
     write_rtconf vm_screen_name "$vm_screen_name"
+    mkdir -p "$vm_iodir"
     screen $detach -A -S "$vm_screen_name" \
         bash -c "
             $qemu                                                                   \
@@ -186,7 +187,8 @@ vm_start() {
                 -smp \"$cpu\"                                                       \
                 -cpu host                                                           \
                 $nogfx                                                              \
-                -virtfs local,id=\"export\",path=\"/\",security_model=none,mount_tag=export \
+                -virtfs local,id=\"hostroot\",path=\"/\",security_model=none,mount_tag=hostroot,readonly \
+                -virtfs local,id=\"io\",path=\"$vm_iodir\",security_model=none,mount_tag=io \
                 -machine pc,accel=kvm                                               \
                 -net nic,model=virtio,vlan=0                                        \
                 -net user,vlan=0,net=$net,hostname=$vm_name,$hostfwd                \

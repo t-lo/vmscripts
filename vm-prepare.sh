@@ -96,11 +96,13 @@ vm_prepimg() {
          else
              grub2-mkconfig -o /boot/grub2/grub.cfg;
          fi;
-         mkdir -p /host_root/;
+         mkdir -p /_host_root /_io;
          if which systemctl; then
-             echo "export /host_root 9p x-systemd.automount,x-systemd.device-timeout=10,rw,dirsync,relatime,trans=virtio,version=9p2000.L,posixacl,cache=none 0 0" >> /etc/fstab;
+             echo "hostroot /_host_root 9p x-systemd.automount,x-systemd.device-timeout=10,ro,dirsync,relatime,trans=virtio,version=9p2000.L,posixacl,cache=none 0 0" >> /etc/fstab;
+             echo "io /_io 9p x-systemd.automount,x-systemd.device-timeout=10,rw,dirsync,relatime,trans=virtio,version=9p2000.L,posixacl,cache=none 0 0" >> /etc/fstab;
          else
-             echo "export /host_root 9p rw,dirsync,relatime,trans=virtio,version=9p2000.L,posixacl,cache=none 0 0" >> /etc/fstab;
+             echo "hostroot /_host_root 9p ro,dirsync,relatime,trans=virtio,version=9p2000.L,posixacl,cache=none 0 0" >> /etc/fstab;
+             echo "io /_io 9p rw,dirsync,relatime,trans=virtio,version=9p2000.L,posixacl,cache=none 0 0" >> /etc/fstab;
          fi;' \
         || die "Set-up failed for $vm_name"
     echo

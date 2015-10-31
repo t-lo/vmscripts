@@ -7,7 +7,7 @@ vm - simplistic, per-user VM management.
 
 
 == SYNOPSIS ==
-*vm* *creat* | *prepare* | *ls* | *slink* | *start* | *ports* | *attach* | *ssh* | *off* | *purge*
+*vm* *creat* | *prepare* | *ls* | *slink* | *start* | *ports* | *iodir* | *attach* | *ssh* | *off* | *purge*
 
 When called without any parameters, *vm* prints all available commands.
 *vm* '<command>' '-h' prints help for '<command>'.
@@ -23,24 +23,33 @@ it is shut down.
 
 *Networking*
 
-Since VMs run in qemu's "user mode networking" where guest networking is
-completely opaque to the host, connections from the host (or
-any other machine on the host's network) are impossible. In order to connect
-to services of the VM, port forwarding is required - refer to *vm creat* and
+When VMs run their network in 'hidden' mode (qemu's "user mode networking") the
+guest networking is completely opaque to the host. Selected server ports of the
+guest may be forwarded so the host can connect - refer to *vm creat* and
 the *Files and Directories* section for more information. Ports forwarded by
 the VM are dynamically mapped to host ports when the VM is started. *vm ports*
 will show the mappings of an active VM.
 
 
-*File transfer*
+*Filesystem access and file transfer*
 
-The host's root directory is made available via plan9 with the ID 'export'. The
-guest may mount it like e.g. 
+The host's root directory is made available read-only via plan9 with the ID
+'hostroot'.  The guest may mount it like e.g. 
 
-  mount -t 9p -o trans=virtio export /<whereever> -oversion=9p2000.L,posixacl,cache=none
+  mount -t 9p -o trans=virtio,ro hostroot /<whereever> -oversion=9p2000.L,posixacl,cache=none
 
-The command *vm prepare* arranges for a mount on 'host_root' in the guest
-system's fstab.
+In order to export files from the guest a second directory with the ID 'io' is
+made available to the guest, but in read-write mode. It may be mounted in the
+guest like e.g.
+
+  mount -t 9p -o trans=virtio,rw io /<whereever> -oversion=9p2000.L,posixacl,cache=none
+
+Since the host directory backing this guest mount needs to be writeable, an "IO
+dir" is maintained for each VM. The directory may be printed by issuing 'vm
+iodir <name>'.
+
+The command *vm prepare* arranges for a mount on '/_host_root' and '/_io'
+respectively in the guest system's fstab.
 
 === vm commands ===
 
@@ -53,6 +62,8 @@ The commands are:
 *vm start* :: Start a virtual machine.
 
 *vm ports* :: Print the host port -> VM port mapping of an active VM.
+
+*vm iodir* :: Print the IO directory (for transfering files).
 
 *vm attach* :: Attach to the serial console of an active VM.
 
@@ -113,9 +124,13 @@ The arguments are:
 *vm ports* '<name>' :: Print the host port -> VM port mapping of active VM
 '<name>'.
 
+=== vm iodir ===
+*vm iodir* '<name>' :: Print the IO directory mapping (host => guest) for VM
+'<name>'. For a discussion of the IO directory please refer to the section 
+*Filesystem access and file transfer* above.
+
 === vm attach ===
 *vm attach* '<name>' :: Attach to the serial console of active VM '<name>'.
-
 
 === vm ssh ===
 *vm ssh* '<name>' '[cmd]' :: Run command '[cmd]' on active VM '<name>', or an

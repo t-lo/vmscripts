@@ -1,6 +1,6 @@
 #!/bin/bash -ue
 #
-# 'vmscripts' low-level VM management scripts - active VM port map listing
+# 'vmscripts' low-level VM management scripts - io directory printer
 #
 # Copyright © 2015 Thilo Fromm. Released under the terms of the GNU GLP v3.
 #
@@ -18,32 +18,26 @@
 #    along with vmscripts. If not, see <http://www.gnu.org/licenses/>.#
 #
 
-vmscripts_prereq="active"
+vmscripts_prereq="exist"
 
-ports_usage() {
+iodir_usage() {
     echo " Usage:"
-    echo "    vm ports <name>  -  display host port => VM port mappings."
+    echo "    vm iodir <name>  -  print VM's IO directory."
 }
 # ----
 
-vm_ports() {
+vm_iodir() {
     local line=""
 
-    for line in $(set | grep -E '^vm_port_'); do
-        local map=$(echo "$line" | sed -n 's/vm_port_\([0-9=]\+\)/\1/p')
-        [ -z "$map" ] && continue
-        local vm_port=${map/=*/}
-        local host_port=${map/*=/}
-        echo "$host_port => $vm_port"
-    done
+    echo "$vm_iodir => /_io"
 }
 # ----
 
-if [ `basename "$0"` = "vm-ports.sh" ] ; then
+if [ `basename "$0"` = "vm-iodir.sh" ] ; then
     [ "${vm_tools_initialized-NO}" != "YES" ] && {
-        exec $(which vm) "ports" $@
+        exec $(which vm) "iodir" $@
         exit 1; }
-    vm_ports $@
+    vm_iodir $@
 else
     true
 fi
