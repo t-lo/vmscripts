@@ -45,18 +45,31 @@ system's fstab.
 === vm commands ===
 
 The commands are:
+
 *vm ls* :: List virtual machines.
-*vm slink* :: Soft-link an existing VM to a new VM.
+
+*vm slink* :: Soft-link an existing VM to a new VM. 
+
 *vm start* :: Start a virtual machine.
+
 *vm ports* :: Print the host port -> VM port mapping of an active VM.
+
 *vm attach* :: Attach to the serial console of an active VM.
+
 *vm ssh* :: Run an SSH command (or an interactive shell) on an active VM.
+
 *vm off* :: Power off an active VM.
 
+
 Also (for VM creation and removal):
+
 *vm creat* :: Create a new VM.
+
 *vm prepare* :: Prepare a fresh VM to work well with *vmscripts*.
+
 *vm purge* :: Remove a VM, including all images and configurations.
+
+
 
 For a detailed description of each command refer to the sections below.
 
@@ -114,30 +127,34 @@ interactive shell if '[cmd]' was omitted.
 
 
 === vm creat ===
-*vm creat* 'name' '[-m]' '[<disk-size-or-path-to-image>]' '[<path-to-iso-image>]' '[<mem-size>]' '[<nr-of-cpus>]' '[<internal-network>]' '[<list-of-forwarded-ports>]'::
+*vm creat* '<name>' '[<optional arguments>]' :: Create new VM '<name>'
 
-Create a new VM. Note that all arguments must be provided in order - except
-the [-m] flag, which may be omitted.
-All arguments except 'name' are optional; *vm creat* will use default
-values if arguments are missing. Alternatively, '-' may be used instead of
-an argument to use the default - this may be used to default one parameter
-and still set the ones after that.
-
-Issuing *vm creat -h* will print the default values.
-
-The arguments are:
+Create a new VM.
 
 *<name>* ::  unique identifier for this VM
-*[-m]* :: Move source disk image and ISO instead of copying.
-*[<disk-size-or-path-to-image>]* :: Either the size of the harddisk image
-     (followed by K, M, G or T), or path to an existing image (which will be
-             copied).
-*[<path-to-iso-image>]* :: Path to an ISO image to use with the VM
-*[<mem-size>]* :: Amount of memory (followed by M or G).
-*[<nr-of-cpus>]* :: Virtual CPUs count.
-*[<internal-network>]* :: VM-internal network.
-*[<list-of-forwarded-ports>]* :: List of ports forwarded to host ports,
-                                 separated by comma (e.g.  '22,80,554')
+
+Issuing *vm creat -h* will print the default values of optional arguments.
+
+The optional arguments are:
+
+*-d|--disk* '<path-to-image>' :: Copy pre-existing harddisk image instead of
+                                 creating a new empty volume.
+*-s|--disk-size* '<size>' :: Size of the harddisk volume (may be followed by
+                                K, M, G or T) to be created for the new VM.
+*-i|--iso* '<path-to-iso-image>' :: Path to an ISO image to use with the VM.
+                                    The image will be copied.
+*-M|--move* :: Move source disk image and ISO instead of copying.
+*-m|--mem* '<mem-size>' :: Amount of memory (followed by M or G).
+*-c|--cpus* '<nr-of-cpus>' :: Virtual CPUs count.
+*-N|--net-mode* '<hidden|tap>' :: Networking mode:
+                *--net-mode hidden* :: No host-visible network devices; VM
+                                        ports need to be forwarded (see -p).
+                                        This is the default.
+                *--net-mode tap*    :: VM uses a TAP device on the host.
+                                Starting the VM will require root privileges.
+*-n|--net* '<internal-network>' :: VM-internal network (IP/MASK).
+*-p|--ports* '<forwarded-ports>' :: List of ports forwarded to host ports in 'hidden' network mode,
+                                    separated by comma (e.g.  '22,80,554')
 
 
 === vm prepare ===

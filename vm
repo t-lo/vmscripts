@@ -68,6 +68,7 @@ usage() {
     echo
     if [ $# -ge 1 ] ; then
         echo " vm $vm_cmd: $@"
+        echo
         ret=1
     fi
     ${vm_cmd}_usage
