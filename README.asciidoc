@@ -85,21 +85,25 @@ Also (for VM creation and removal):
 For a detailed description of each command refer to the sections below.
 
 === vm ls ===
-*vm ls* '[-a]' :: List all VMs known to *vm*. A flag will be added to the
-output for soft-linked or currently active.
+*vm ls* '[-a|--active]' '[-t|--tap]' :: List all VMs known to *vm*. A flag
+                                        will be added to the
+                                    output for soft-linked or currently active.
 
-The arguments are:
+The optional arguments are:
 
-*[-a]* :: List only VMs which are currently active.
+*[-a|--active]* :: List only VMs which are currently active.
+
+*[-t|--tap]* :: List only VMs which use TAP networking.
 
 Example output:
 ...................
     user@host $ vm ls
-             debian7   (active)
-           debian7.8   (active)          (->debian7)
-              devuan                     (->debian7)
-            fedora21   (active)
-                win8
+             name       active            soft link         network   mode
+             debian7   (active)                        172.16.10.0/24 hidden
+            fedora21                                   172.16.10.0/24 hidden
+         piler-build                     (->debian7)   172.16.10.0/24 hidden
+       piler-install                     (->debian7)   172.16.10.0/24 hidden
+                win8                                   172.16.10.0/24 hidden
 ...................
 
 
