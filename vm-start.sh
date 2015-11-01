@@ -22,11 +22,24 @@ vmscripts_prereq="inactive"
 
 start_usage() {
     echo " Usage:"
-    echo "  vm start <name> [rw] [fg] [gfx] - start VM <name>"
+    echo "  vm start <name> [optional arguments] - start VM <name>"
     echo
-    echo "   [rw]   'mutable' mode - changes to disk image will persist."
-    echo "   [fg]    run in foreground (detach with 'CTRL+a d')"
-    echo "  [gfx]    start with graphics (SDL out) enabled."
+    echo "   [-w|--writable]      'mutable' mode - changes to disk image will persist."
+    echo "   [-f|--foreground]    run in foreground (detach with 'CTRL+a d')"
+    echo "   [-g|--graphics]      start with graphics (SDL out) enabled."
+    echo "   [-n|--no-root]       don't run operations that require root."
+}
+# ----
+
+start_complete() {
+    local cword="$1"; shift
+    [ $cword -le 1 ] && return
+
+    local words=( $@ )
+    local opts="--writable --foreground --graphics --no-root"
+    local cur="${words[$cword]-}"
+
+    compgen -W "${opts}" -- $cur
 }
 # ----
 
@@ -135,24 +148,30 @@ vm_start() {
     local immutable="-snapshot"
     local nogfx="-nographic"
     local detach="-d -m"
+    local noroot=false
 
     sanity
 
     # command line flags
-    if echo "$@" | grep -q "rw" ; then
-        echo
-        echo "The VM image will be *mutable*, all changes will persist."
-        echo
-        immutable=""
+    local opts
+    opts=$(getopt -o wfgn -l "writable,foreground,graphics,no-root" \
+                                                        -n "vm start" -- "$@")
+    for o in $opts; do
+        case $o in
+            -w|--writable)    immutable="";;
+            -f|--foreground)  detach="";;
+            -g|--graphics)    nogfx="";;
+            -r|--no-root)     noroot=true;;
+        esac
+    done
+
+    if [ -z "$immutable" ] ; then
         write_rtconf "vm_immutable" "false"
     else
         write_rtconf "vm_immutable" "true"
     fi
 
-    echo "$@" | grep -q "fg" && detach=""
-
-    if echo "$@" | grep -q "gfx" ; then
-        nogfx=""
+    if [ -z "$nogfx" ] ; then
         write_rtconf "vm_graphics" "true"
     else
         write_rtconf "vm_graphics" "false"
@@ -168,7 +187,7 @@ vm_start() {
         cdrom="-drive file=$vm_iso_image,if=ide,index=0,media=cdrom"
         write_rtconf "vm_iso_image" "$vm_iso_image" ; }
 
-    tune_kvm_module
+    $noroot || tune_kvm_module
 
     # will also update runtime config
     local hostfwd=`grok_ports`

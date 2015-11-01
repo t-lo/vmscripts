@@ -52,7 +52,6 @@ vm_ls_active() {
 }
 # ----
 
-
 vm_ls() {
     local opts ls_act=false ls_tap=false
     opts=$(getopt -o at -l "active,tap" -n "vm ls" -- "$@")
