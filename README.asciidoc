@@ -122,9 +122,13 @@ The optional arguments are:
 
 *[-f|--foreground]* :: Run in foreground. You'll be connected to the VM's
                                                                   serial line.
+
 *[-g|--graphics]* :: Enable graphics output.
+
 *[-w|--writeable]* :: Run in "mutable" mode. All changes to the VM will persist.
-*[-n|--no-root]* :: Never ask for root password, fail if this is required.
+
+*[-n|--no-root]* :: Never ask for root password. Instead, fail if root is
+                                                                    required.
 
 
 === vm ports ===
