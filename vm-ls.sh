@@ -20,6 +20,9 @@
 
 vmscripts_prereq="none"
 
+ls_shortopts="-a -t"
+ls_longopts="--active --tap"
+
 ls_usage() {
     echo " Usage:"
     echo "    vm ls [-a|--active] [-t|--tap] - List VMs."
@@ -28,18 +31,6 @@ ls_usage() {
     echo
     echo "    -a|--active    List started / running VMs only."
     echo "    -t|--tap       List VMs using TAP networking only."
-}
-# ----
-
-ls_complete() {
-    local cword="$1"; shift
-    [ $cword -le 1 ] && return
-
-    local words=( $@ )
-    local opts="--active --tap"
-    local cur="${words[$cword]-}"
-
-    compgen -W "${opts}" -- $cur
 }
 # ----
 
@@ -64,9 +55,6 @@ vm_ls() {
     done
 
     local active="$(vm_ls_active | sed 's/^\(.*\)$/ \1 /')"
-
-    printf "%20s %10.10s %20.20s %16.16s %s\n" \
-        "name   " "active " "soft link " "network  " "mode"
 
     for name in $(ls -1 "$VM_CONFIG_PATH/") ; do
         [ ! -d "$VM_CONFIG_PATH/$name" ] && continue

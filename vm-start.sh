@@ -20,6 +20,9 @@
 
 vmscripts_prereq="inactive"
 
+start_longopts="--writable --foreground --graphics --no-root"
+start_shortopts="-w -f -g -n"
+
 start_usage() {
     echo " Usage:"
     echo "  vm start <name> [optional arguments] - start VM <name>"
@@ -28,18 +31,6 @@ start_usage() {
     echo "   [-f|--foreground]    run in foreground (detach with 'CTRL+a d')"
     echo "   [-g|--graphics]      start with graphics (SDL out) enabled."
     echo "   [-n|--no-root]       don't run operations that require root."
-}
-# ----
-
-start_complete() {
-    local cword="$1"; shift
-    [ $cword -le 1 ] && return
-
-    local words=( $@ )
-    local opts="--writable --foreground --graphics --no-root"
-    local cur="${words[$cword]-}"
-
-    compgen -W "${opts}" -- $cur
 }
 # ----
 

@@ -18,8 +18,10 @@
 #    along with vmscripts. If not, see <http://www.gnu.org/licenses/>.#
 #
 
+
+#     MODULES API
+#   ===============
 #
-# MODULES API
 # - modules must be in the current PATH
 # - modules are named 'vm-<modname>.sh'
 # - modules *MUST* immplement at least a main function like
@@ -28,16 +30,30 @@
 #       # main entry function of module
 #  }
 #
+# -----------------
+#
 # - modules *MAY* implement these utility functions:
 #
 #   <modname>_usage() {
 #       echo "Usage: vm <modname> ...."
 #   }
 #
+#   -----
+#
 #   <modname>_complete() {
 #       # auto-complete helper for the module
 #   }
 #
+#   -----
+#
+# - modules *MAY* define command line arguments for use with auto completion,
+#    e.g.:
+#
+# <modname>_shortopts="-i -d -s -M -m" 
+# <modname>_longopts="--iso --disk --disk-size --move --mem"
+#
+#   -----
+# 
 # - modules *MAY* define one global variable determining the importance of the
 #   <vm-name> argument:
 #
@@ -49,9 +65,11 @@
 #    'exist'     - A name must be provided and the corresponding VM must exist
 #    'inactive'  - The VM specified by the <name> argument must be powered off
 #    'active'    - The VM specified by the <name> argument must be up + running
+# 
+# -----------------
 #
 # Variables defined and exported by "vm" main entry script
-# - basically, look at setup_env()
+# - basically, look at setup_env() below
 # - also, all values from the config and the run time config
 
 #
@@ -101,7 +119,9 @@ function source_with_defaults() {
 
     vmscripts_prereq="none"
     eval "${cmd}_usage()    { return ; }"
-    eval "${cmd}_complete() { return ; }"
+    eval "${cmd}_complete() { return 1; }"
+    eval "${cmd}_longopts=''"
+    eval "${cmd}_shortopts=''"
     source "$script"
 }
 # ----
@@ -208,7 +228,12 @@ vm_complete() {
         break
     done
 
-    ${cmd}_complete "$cword" $@
+    [ $cword -le 2 -a "$vmscripts_prereq" != "none" -o $cword -le 1 ] && return
+
+    opts="$(eval echo \$${cmd}_shortopts) $(eval echo \$${cmd}_longopts)"
+    if [ -n "$opts" ] && ! ${cmd}_complete "$cword" $@ ; then
+        compgen -W "${opts}" -- $cur
+    fi
 }
 # ----
 

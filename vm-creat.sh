@@ -21,6 +21,9 @@
 
 vmscripts_prereq="name"
 
+creat_shortopts="-i -d -s -M -m -c -N -n -p"
+creat_longopts="--iso --disk --disk-size --move --mem --cpus --net-mode --net --ports"
+
 # the options, including their respective defaults
 disk_size="4G"
 disk_image=""
@@ -62,26 +65,25 @@ creat_usage () {
 
 creat_complete() {
     local cword="$1"; shift
-    [ $cword -le 2 ] && return
+    [ $cword -le 3 ] && return 1
 
     local words=( $@ )
-    local opts="--iso --disk --disk-size --move --mem --cpus --net-mode --net --ports"
     local cur="${words[$cword]-}"
     local prev="${words[$((cword-1))]-}"
 
-
     # auto-complete options with the default settings
     case $prev in
-        --iso)          echo "---DEFAULT---";; # complete filenames
-        --disk)         echo "---DEFAULT---";; # complete filenames
-        --disk-size)    echo -n "$disk_size";;
-        --mem)          echo -n "$mem";;
-        --cpus)         echo -n "$cpus";;
-        --net-mode)     echo -n "$net_mode";;
-        --net)          echo -n "$net";;
-        --ports)        echo -n "$forward_ports";;
-        *)              compgen -W "${opts}" -- $cur
+        -i|--iso)          echo "---DEFAULT---"; return;; # complete filenames
+        -d|--disk)         echo "---DEFAULT---"; return;; # complete filenames
+        -s|--disk-size)    echo -n "$disk_size"; return;;
+        -m|--mem)          echo -n "$mem"; return;;
+        -c|--cpus)         echo -n "$cpus"; return;;
+        -N|--net-mode)     echo -n "$net_mode"; return;;
+        -n|--net)          echo -n "$net"; return;;
+        -p|--ports)        echo -n "$forward_ports"; return;;
     esac
+
+    return 1
 }
 # ----
 
