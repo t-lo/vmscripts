@@ -170,7 +170,10 @@ write_qemu_script() {
     local boot_prio="cdn"
     [ "$bootiso" = "true" ] && boot_prio="dcn"
 
-    local script=$(mktemp --suffix "$USER-qemu-$vm_name")
+    local dir=$(mktemp -d --suffix "-$USER-qemu-$vm_name")
+    local script="$dir/qemu-$vm_name.sh"
+    local semafile="$dir/.running"
+    touch "$script" "$semafile"
     chmod 700 "$script"
 
     local tapdev=""
@@ -184,8 +187,6 @@ write_qemu_script() {
  
 cat >> "$script" <<EOF
 #!/bin/bash -i
-
-set -x
 
 ip_forward_and_nat() {
     local onoff="\$1"
@@ -207,12 +208,32 @@ ip_forward_and_nat() {
 }
 
 prepare() {
+    # prepare qemu TAP networking. This is usually run with sudo.
     [ "$netmode" != "hidden" ] && {
         ip tuntap add dev $tapdev mode tap
-        ip a a "$net" dev "$tapdev" 
+        local ipconf=\$(echo "$net" | sed 's/\.[0-9]\+\//.1\//')
+        ip a a "\$ipconf" dev "$tapdev" 
         ip link set mtu 65521 dev "$tapdev" up
         ip_forward_and_nat true
     }
+
+    wait_and_teardown() {
+        # wait for the qemu process to stop
+        while [ -f "$semafile" ]; do
+            sleep 1
+        done
+
+        [ "$netmode" != "hidden" ] && {
+            ip_forward_and_nat false
+            ip link set dev "$tapdev" down
+            ip tuntap del "$tapdev" mode tap
+        }
+        rm -f "$script"
+        rmdir "$dir"
+    }
+
+    wait_and_teardown &
+
 }
 
 run() {
@@ -240,14 +261,9 @@ run() {
 
     # bring back qemu
     fg
-}
 
-teardown() {
-    [ "$netmode" != "hidden" ] && {
-        ip_forward_and_nat false
-        ip link set dev "$tapdev" down
-        ip tuntap del "$tapdev" mode tap
-    }
+    # If we're here this means qemu exited. Remove sema file.
+    rm -f "$semafile"
 }
 
 case "\$1" in
@@ -324,7 +340,6 @@ set -x
 
     screen -A -S "$vm_screen_name" \
         bash -c "
-        set -x
         if [ \"$netmode\" != \"hidden\" ] ; then
             echo
             echo VM '$vm_name' uses network mode '$netmode'.
@@ -333,14 +348,12 @@ set -x
             echo
             sudo \"$qscript\" prepare
             \"$qscript\" run
-            sudo \"$qscript\" teardown
         else
             \"$qscript\" prepare
             \"$qscript\" run
-            \"$qscript\" teardown
         fi
         read
-        rm -f \"$vm_pidfile\" \"$vm_rtconf\" \"$qscript/\" ; "
+        rm -f \"$vm_pidfile\" \"$vm_rtconf\" ; "
 
     $detach && {
         echo "-------------------------------------------"
