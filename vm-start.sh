@@ -352,7 +352,6 @@ set -x
             \"$qscript\" prepare
             \"$qscript\" run
         fi
-        read
         rm -f \"$vm_pidfile\" \"$vm_rtconf\" ; "
 
     $detach && {
