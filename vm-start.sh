@@ -286,7 +286,7 @@ vm_start() {
     local qscript=$(write_qemu_script \
                           "$qemu" "$nogfx" "$networking" "$cdrom" "$immutable")
     screen -A -S "$vm_screen_name" \
-        bash -x -c "
+        bash -c "
         if [ \"$netmode\" != \"hidden\" ] ; then
             echo
             echo VM '$vm_name' uses network mode '$netmode'.
@@ -299,8 +299,6 @@ vm_start() {
             ls -la $qscript
             $qscript
         fi
-        echo 'Waiting...'
-        read
         rm -f \"$vm_pidfile\" \"$vm_rtconf\" \"$qscript\"; "
 
     $detach && {
