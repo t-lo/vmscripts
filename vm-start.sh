@@ -2,7 +2,8 @@
 #
 # 'vmscripts' low-level VM management scripts - VM starter
 #
-# Copyright © 2015 Thilo Fromm. Released under the terms of the GNU GLP v3.
+# Copyright © 2015, 2016, 2017 Thilo Fromm. Released under the terms of the GNU
+#    GLP v3.
 #
 #    vmscripts is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -34,12 +35,18 @@ start_usage() {
 }
 # ----
 
-tune_kvm_module() {
-    local modname=""
-
+grok_sudo() {
     local sudo=""
     local user="$(id -un)"
     [ "$user" != "root" ] && sudo=sudo
+
+    echo "$sudo"
+}
+# ----
+
+tune_kvm_module() {
+    local modname=""
+    local sudo=$(grok_sudo)
 
     grep -q 'vmx' /proc/cpuinfo && modname="kvm-intel"
     grep -q 'svm' /proc/cpuinfo && modname="kvm-amd"
@@ -130,7 +137,91 @@ sanity() {
             && die "VM $vm_name already running"
         rm -f "$vm_pidfile"
     }
+
     rm -f "$vm_rtconf"
+}
+# ----
+
+check_netmode() {
+    local noroot="$1"
+
+    if [ "$netmode" != "hidden" ] ; then
+        $noroot && \
+           die "Need sudo/root to start VM '$vm_name' in net mode '$netmode'."
+    fi
+    return 0
+}
+# ----
+
+write_qemu_script() {
+    local qemu="$1"
+    local nogfx="$2"
+    local networking="$3"
+    local cdrom="$4"
+    local immutable="$5"
+
+    local script=$(mktemp --suffix "qemu-$vm_name")
+    chmod 700 "$script"
+
+cat >> "$script" <<EOF
+#!/bin/bash -i
+
+ip_forward_and_nat() {
+    local onoff="\$1"
+    local if_name="\$2"
+    local gw_if=\$(route -n | awk '/^0.0.0.0/ { print \$8; }')
+
+    if \$onoff; then
+        [ -n "\$gw_if" ] &&                                      \\
+            {   echo " NOTE: will NAT all connections going through \$gw_if"
+                iptables --table nat --append POSTROUTING        \\
+                                    --out-interface \$gw_if -j MASQUERADE; }
+        iptables  --insert FORWARD --in-interface \${if_name}  -j ACCEPT
+        sysctl -q -w net.ipv4.ip_forward=1
+    else 
+        [ -n "\$gw_if" ] && iptables --table nat --delete POSTROUTING     \\
+                                        --out-interface \$gw_if -j MASQUERADE
+        iptables  --delete FORWARD --in-interface \${if_name}  -j ACCEPT
+    fi
+}
+
+run_cmd="bash -c"
+
+[ "$netmode" != "hidden" ] && {
+    ip_forward_and_nat true
+    run_cmd="su --login $USER -c"
+}
+
+# start qemu in background so we can detach the screen session
+\$run_cmd '\\
+    $qemu                                                               \\
+     -monitor telnet:127.0.0.1:$vm_port_hmp,server,nowait,nodelay       \\
+     -pidfile "$vm_pidfile"                                             \\
+     -m "$mem"                                                          \\
+     -rtc base=utc                                                      \\
+     -smp "$cpu"                                                        \\
+     -cpu host                                                          \\
+     $nogfx                                                             \\
+     -virtfs local,id="hostroot",path="/",security_model=none,mount_tag=hostroot,readonly \\
+     -virtfs local,id="io",path="$vm_iodir",security_model=none,mount_tag=io \\
+     -machine pc,accel=kvm                                              \\
+     -net nic,model=virtio,vlan=0                                       \\
+     $networking                                                        \\
+     -boot cdn                                                          \\
+     -drive file=$vm_disk_image,if=virtio,index=0,media=disk,format=raw \\
+     $cdrom                                                             \\
+     $immutable' &
+
+# detach if --foreground was not provided
+$detach && su --login $USER -c 'screen -d "$vm_screen_name"'
+
+# bring back qemu
+fg
+
+[ "$netmode" != "hidden" ] && ip_forward_and_nat false
+
+EOF
+    echo "$script"
 }
 # ----
 
@@ -138,7 +229,7 @@ vm_start() {
     # command line options
     local immutable="-snapshot"
     local nogfx="-nographic"
-    local detach="-d -m"
+    local detach="true"
     local noroot=false
 
     sanity
@@ -150,11 +241,14 @@ vm_start() {
     for o in $opts; do
         case $o in
             -w|--writable)    immutable="";;
-            -f|--foreground)  detach="";;
+            -f|--foreground)  detach="false";;
             -g|--graphics)    nogfx="";;
             -r|--no-root)     noroot=true;;
         esac
     done
+
+    check_netmode "$noroot"
+    $noroot || tune_kvm_module
 
     if [ -z "$immutable" ] ; then
         write_rtconf "vm_immutable" "false"
@@ -178,37 +272,38 @@ vm_start() {
         cdrom="-drive file=$vm_iso_image,if=ide,index=0,media=cdrom"
         write_rtconf "vm_iso_image" "$vm_iso_image" ; }
 
-    $noroot || tune_kvm_module
-
     # will also update runtime config
     local hostfwd=`grok_ports`
     source "$vm_rtconf"
+    local networking="-net user,vlan=0,net=$net,hostname=$vm_name,$hostfwd"
 
     local vm_screen_name="${vm_name}-vmscripts"
     write_rtconf vm_screen_name "$vm_screen_name"
-    mkdir -p "$vm_iodir"
-    screen $detach -A -S "$vm_screen_name" \
-        bash -c "
-            $qemu                                                                   \
-                -monitor telnet:127.0.0.1:$vm_port_hmp,server,nowait,nodelay        \
-                -pidfile \"$vm_pidfile\"                                            \
-                -m \"$mem\"                                                         \
-                -rtc base=utc                                                       \
-                -smp \"$cpu\"                                                       \
-                -cpu host                                                           \
-                $nogfx                                                              \
-                -virtfs local,id=\"hostroot\",path=\"/\",security_model=none,mount_tag=hostroot,readonly \
-                -virtfs local,id=\"io\",path=\"$vm_iodir\",security_model=none,mount_tag=io \
-                -machine pc,accel=kvm                                               \
-                -net nic,model=virtio,vlan=0                                        \
-                -net user,vlan=0,net=$net,hostname=$vm_name,$hostfwd                \
-                -boot cdn                                                           \
-                -drive file=$vm_disk_image,if=virtio,index=0,media=disk             \
-                $cdrom                                                              \
-                $immutable ;
-            rm -f \"$vm_pidfile\" \"$vm_rtconf\" ; "
 
-    [ "$detach" != "" ] && {
+    mkdir -p "$vm_iodir"
+
+    # generate qemu script and run it in a screen session
+    local qscript=$(write_qemu_script \
+                          "$qemu" "$nogfx" "$networking" "$cdrom" "$immutable")
+    screen -A -S "$vm_screen_name" \
+        bash -x -c "
+        if [ \"$netmode\" != \"hidden\" ] ; then
+            echo
+            echo VM '$vm_name' uses network mode '$netmode'.
+            echo
+            echo SUDO may ask you for a password in order to configure VM networking.
+            echo
+            sudo \"$qscript\"
+        else
+            echo $qscript
+            ls -la $qscript
+            $qscript
+        fi
+        echo 'Waiting...'
+        read
+        rm -f \"$vm_pidfile\" \"$vm_rtconf\" \"$qscript\"; "
+
+    $detach && {
         echo "-------------------------------------------"
         echo " The VM $vm_name has been started and"
         echo " detached from this terminal. Run"

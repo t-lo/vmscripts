@@ -2,7 +2,8 @@
 #
 # 'vmscripts' low-level VM management scripts VM SSH script
 #
-# Copyright © 2015 Thilo Fromm. Released under the terms of the GNU GLP v3.
+# Copyright © 2015, 2016, 2017 Thilo Fromm. Released under the terms of the GNU
+#    GLP v3.
 #
 #    vmscripts is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by

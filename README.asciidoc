@@ -205,6 +205,18 @@ configuration in a per-VM sub-directory in '~/.vmscripts/'.
 *~/.vmscripts/<name>/<name>.iso* :: The VM ISO (cdrom, dvd) image, if applicable.
 *~/.vmscripts/<name>/<name>.cfg* :: The VM configuration, including port mappings.
 
+=== Structure of the VM configuration files ===
+
+*~/.vmscripts/<name>/<name>.cfg* :: is a bash-sourced 'variable="value"'
+configuration. Currently it supports the following variables:
+
+ net="<ip address + subnet mask>"
+ cpu="<number of CPUs>"
+ mem="<Amount of memory, followed by M or G>"
+ forward_ports="<list of forwarded ports separated by spaces>"
+ netmode="<hidden|tap>"
+
+
 == AUTHOR ==
 vmscripts were written and are maintained by Thilo Alexander Fromm
 (kontakt@thilo-fromm.de).

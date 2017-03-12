@@ -161,6 +161,8 @@ setup_env() {
     [ -f "$vm_config" ] && source "$vm_config"
     [ -f "$vm_rtconf" ] && source "$vm_rtconf"
 
+    [ -z "${netmode-}" ] && netmode="hidden"
+    
     vm_tools_initialized="YES"
 
     export vm_name vm_path vm_disk_image vm_iso_image vm_pidfile \
