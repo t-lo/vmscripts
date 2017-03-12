@@ -130,6 +130,8 @@ The optional arguments are:
 *[-n|--no-root]* :: Never ask for root password. Instead, fail if root is
                                                                     required.
 
+*[-b|--boot-iso]* :: ISO image (CD/DVD) has boot priority.
+
 
 === vm ports ===
 *vm ports* '<name>' :: Print the host port -> VM port mapping of active VM

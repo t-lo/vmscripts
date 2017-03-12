@@ -21,8 +21,8 @@
 
 vmscripts_prereq="inactive"
 
-start_longopts="--writable --foreground --graphics --no-root"
-start_shortopts="-w -f -g -n"
+start_longopts="--writable --foreground --graphics --no-root --boot-iso"
+start_shortopts="-w -f -g -n -b"
 
 start_usage() {
     echo " Usage:"
@@ -32,6 +32,7 @@ start_usage() {
     echo "   [-f|--foreground]    run in foreground (detach with 'CTRL+a d')"
     echo "   [-g|--graphics]      start with graphics (SDL out) enabled."
     echo "   [-n|--no-root]       don't run operations that require root."
+    echo "   [-b|--boot-iso]      ISO image (CD/DVD) has boot priority."
 }
 # ----
 
@@ -153,22 +154,42 @@ check_netmode() {
 }
 # ----
 
+qscript_from_dir() {
+    local qscriptdir="$1"
+    echo "$qscriptdir/qemu-$vm_name.sh"
+}
+# ----
+
 write_qemu_script() {
     local qemu="$1"
-    local nogfx="$2"
-    local networking="$3"
-    local cdrom="$4"
+    local gfx="$2"
+    local cdrom="$3"
+    local bootiso="$4"
     local immutable="$5"
 
-    local script=$(mktemp --suffix "qemu-$vm_name")
+    local boot_prio="cdn"
+    [ "$bootiso" = "true" ] && boot_prio="dcn"
+
+    local script=$(mktemp --suffix "$USER-qemu-$vm_name")
     chmod 700 "$script"
 
+    local tapdev=""
+    local networking=""
+    if [ "$netmode" = "hidden" ] ; then
+        networking="-net user,vlan=0,net=$net,hostname=$vm_name,$hostfwd"
+    else
+        tapdev="tap-$vm_name"
+        networking="-net tap,vlan=0,ifname=\"$tapdev\",script=no,downscript=no"
+    fi
+ 
 cat >> "$script" <<EOF
 #!/bin/bash -i
 
+set -x
+
 ip_forward_and_nat() {
     local onoff="\$1"
-    local if_name="\$2"
+    local if_name="$tapdev"
     local gw_if=\$(route -n | awk '/^0.0.0.0/ { print \$8; }')
 
     if \$onoff; then
@@ -185,15 +206,17 @@ ip_forward_and_nat() {
     fi
 }
 
-run_cmd="bash -c"
-
-[ "$netmode" != "hidden" ] && {
-    ip_forward_and_nat true
-    run_cmd="su --login $USER -c"
+prepare() {
+    [ "$netmode" != "hidden" ] && {
+        ip tuntap add dev $tapdev mode tap
+        ip a a "$net" dev "$tapdev" 
+        ip link set mtu 65521 dev "$tapdev" up
+        ip_forward_and_nat true
+    }
 }
 
-# start qemu in background so we can detach the screen session
-\$run_cmd '\\
+run() {
+    # start qemu in background so we can detach the screen session
     $qemu                                                               \\
      -monitor telnet:127.0.0.1:$vm_port_hmp,server,nowait,nodelay       \\
      -pidfile "$vm_pidfile"                                             \\
@@ -201,25 +224,38 @@ run_cmd="bash -c"
      -rtc base=utc                                                      \\
      -smp "$cpu"                                                        \\
      -cpu host                                                          \\
-     $nogfx                                                             \\
+     $gfx                                                               \\
      -virtfs local,id="hostroot",path="/",security_model=none,mount_tag=hostroot,readonly \\
      -virtfs local,id="io",path="$vm_iodir",security_model=none,mount_tag=io \\
      -machine pc,accel=kvm                                              \\
      -net nic,model=virtio,vlan=0                                       \\
      $networking                                                        \\
-     -boot cdn                                                          \\
+     -boot $boot_prio                                                   \\
      -drive file=$vm_disk_image,if=virtio,index=0,media=disk,format=raw \\
      $cdrom                                                             \\
-     $immutable' &
+     $immutable &
 
-# detach if --foreground was not provided
-$detach && su --login $USER -c 'screen -d "$vm_screen_name"'
+    # detach if --foreground was not provided
+    $detach && screen -d "$vm_screen_name"
 
-# bring back qemu
-fg
+    # bring back qemu
+    fg
+}
 
-[ "$netmode" != "hidden" ] && ip_forward_and_nat false
+teardown() {
+    [ "$netmode" != "hidden" ] && {
+        ip_forward_and_nat false
+        ip link set dev "$tapdev" down
+        ip tuntap del "$tapdev" mode tap
+    }
+}
 
+case "\$1" in
+    prepare)  prepare;;
+    run)      run;;
+    teardown) teardown;;
+    *) echo "vmscripts SCRIPT ERROR: unknown vm start action \"\$1\""
+esac
 EOF
     echo "$script"
 }
@@ -228,22 +264,24 @@ EOF
 vm_start() {
     # command line options
     local immutable="-snapshot"
-    local nogfx="-nographic"
+    local gfx="-nographic"
     local detach="true"
     local noroot=false
+    local bootiso=false
 
     sanity
 
     # command line flags
     local opts
-    opts=$(getopt -o wfgn -l "writable,foreground,graphics,no-root" \
+    opts=$(getopt -o bwfgn -l "writable,foreground,graphics,no-root,boot-iso" \
                                                         -n "vm start" -- "$@")
     for o in $opts; do
         case $o in
             -w|--writable)    immutable="";;
             -f|--foreground)  detach="false";;
-            -g|--graphics)    nogfx="";;
+            -g|--graphics)    gfx="";;
             -r|--no-root)     noroot=true;;
+            -b|--boot-iso)    bootiso=true;;
         esac
     done
 
@@ -256,7 +294,7 @@ vm_start() {
         write_rtconf "vm_immutable" "true"
     fi
 
-    if [ -z "$nogfx" ] ; then
+    if [ "$gfx" = "-nographic" ] ; then
         write_rtconf "vm_graphics" "true"
     else
         write_rtconf "vm_graphics" "false"
@@ -272,34 +310,37 @@ vm_start() {
         cdrom="-drive file=$vm_iso_image,if=ide,index=0,media=cdrom"
         write_rtconf "vm_iso_image" "$vm_iso_image" ; }
 
-    # will also update runtime config
+    # 'grok_ports' will also update runtime config, so we source it
     local hostfwd=`grok_ports`
     source "$vm_rtconf"
-    local networking="-net user,vlan=0,net=$net,hostname=$vm_name,$hostfwd"
 
     local vm_screen_name="${vm_name}-vmscripts"
     write_rtconf vm_screen_name "$vm_screen_name"
 
     mkdir -p "$vm_iodir"
+set -x
+    # generate qemu script, grok network settings, and run qemu in a screen session
+    local qscript=$(write_qemu_script "$qemu" "$gfx" "$cdrom" "$bootiso" "$immutable")
 
-    # generate qemu script and run it in a screen session
-    local qscript=$(write_qemu_script \
-                          "$qemu" "$nogfx" "$networking" "$cdrom" "$immutable")
     screen -A -S "$vm_screen_name" \
         bash -c "
+        set -x
         if [ \"$netmode\" != \"hidden\" ] ; then
             echo
             echo VM '$vm_name' uses network mode '$netmode'.
             echo
             echo SUDO may ask you for a password in order to configure VM networking.
             echo
-            sudo \"$qscript\"
+            sudo \"$qscript\" prepare
+            \"$qscript\" run
+            sudo \"$qscript\" teardown
         else
-            echo $qscript
-            ls -la $qscript
-            $qscript
+            \"$qscript\" prepare
+            \"$qscript\" run
+            \"$qscript\" teardown
         fi
-        rm -f \"$vm_pidfile\" \"$vm_rtconf\" \"$qscript\"; "
+        read
+        rm -f \"$vm_pidfile\" \"$vm_rtconf\" \"$qscript/\" ; "
 
     $detach && {
         echo "-------------------------------------------"
@@ -308,6 +349,7 @@ vm_start() {
         echo "   vm attach $vm_name"
         echo " to attach to the VM serial terminal"
         echo ; }
+    return 0
 }
 # ----
 

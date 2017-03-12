@@ -47,13 +47,13 @@
 
 vmscripts_prereq="inactive"
 
-prepimg_usage() {
+prepare_usage() {
     echo " Usage:"
-    echo "    vm prepimg <name>  - prepare VM image for use with vmscripts."
+    echo "    vm prepare <name>  - prepare VM image for use with vmscripts."
 }
 # ----
 
-vm_prepimg() {
+vm_prepare() {
     echo "---------------------------------------"
     echo "           Starting up $vm_name"
     vm start "$vm_name" rw
